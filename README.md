@@ -105,22 +105,20 @@ For example, [libopenmpt 0.7.8 release (2024-06-09)](https://lib.openmpt.org/lib
 - **Development library** downloads are available as well, for using the libopenmpt library with other software projects on various platforms. The libopenmpt 0.7.8 downloads include these for Windows 10 21H2 / Windows 7 SP1, Windows XP SP1, and WebAssembly / Javascript
 - **Documentation** for these releases can also be downloaded.
 
+- Linux distributions - openmpt123 can be found via the package managers of various Linux systems (distributions), e.g. Arch Linux, Debian Linux...
 
-## OpenMPT based module player library
+
+## OpenMPT library
 
 - see https://lib.openmpt.org/libopenmpt/
 
-libopenmpt is a cross-platform C++ and C library to decode tracked music files (modules) [wikipedia] into a raw PCM audio stream.
+- libopenmpt is a cross-platform C++ and C library to decode tracked music files (modules) [wikipedia] into a raw PCM audio stream.
+- libopenmpt is based on the player code of the OpenMPT project (Open ModPlug Tracker). In order to avoid code base fragmentation, libopenmpt is developed in the same source code repository as OpenMPT.
+- libopenmpt ships with a **plugin for XMPlay**, xmp-openmpt.
+- libopenmpt also provides a **compatibility layer** implementing the libmodplug interface on top of libopenmpt in the libopenmpt-modplug package.
+- libopenmpt also did provide **plugins** for **Winamp** (in_openmpt) and foobar2000 (foo_openmpt) is the past. These are now **deprecated** in favour of WinAMP or WACUP which both provide their own plugin based on libopenmpt, and foo_openmpt54 which is a fork of foo_openmpt, respectively.
 
-libopenmpt is based on the player code of the OpenMPT project (Open ModPlug Tracker). In order to avoid code base fragmentation, libopenmpt is developed in the same source code repository as OpenMPT.
-
-libopenmpt ships with a plugin for XMPlay, xmp-openmpt.
-
-libopenmpt also provides a compatibility layer implementing the libmodplug interface on top of libopenmpt in the libopenmpt-modplug package.
-
-libopenmpt also did provide plugins for Winamp (in_openmpt) and foobar2000 (foo_openmpt) is the past. These are now deprecated in favour of WinAMP or WACUP which both provide their own plugin based on libopenmpt, and foo_openmpt54 which is a fork of foo_openmpt, respectively.
-
-For a large list of other software (distribution packages, player plugins, media framework support, and language bindings), see our Wiki page.
+For a large list of other software (distribution packages, player plugins, media framework support, and language bindings), see our [Wiki page](https://wiki.openmpt.org/Libopenmpt).
 
 
 ## License
@@ -135,7 +133,7 @@ folders are not distributed in all source packages, and in particular they are
 not distributed in the Autotools packages.
 
 
-## How to compile
+## How to compile / build
 
 ### OpenMPT
 
@@ -162,11 +160,11 @@ not distributed in the Autotools packages.
 
      -  Visual Studio 2017 XP targeting toolset
 
- -  OpenMPT requires the compile host system to be Windows 8.1 (or later) on
-    amd64 for VS2019 and VS2017, Windows 10 (or later) on amd64 for VS2022, or
-    Windows 11 (or later) ARM64.
+ -  OpenMPT requires the compile host system to be Windows 8.1 or later on
+    amd64 for VS2019 and VS2017, Windows 10 or later on amd64 for VS2022, or
+    Windows 11 or later ARM64.
 
- -  In order to build OpenMPT for Windows XP, the Visual Studio 2017 XP 
+ -  In order to build OpenMPT **for Windows XP**, the Visual Studio 2017 XP 
     targeting toolset as well as the Windows 8.1 SDK need to be installed. The
     SDK is optionally included with Visual Studio 2017, but must be separately
     installed with later Visual Studio versions.
@@ -179,16 +177,46 @@ not distributed in the Autotools packages.
 
  -  Microsoft Foundation Classes (MFC) are required to build OpenMPT.
 
-
 ### libopenmpt and openmpt123
 
+openmpt123
+
+- Live sound output requires one of the following libraries:
+  - PulseAudio
+  - SDL 2
+  - PortAudio v19
+  - Win32
+  - liballegro 4.2 on **DJGPP/DOS**
+- Rendering to PCM audio files can use these libraries (optional dependencies):
+  - FLAC 1.2 or higher
+  - libsndfile
+  - Win32 for WAVE
+  - raw PCM has no external dependencies
+- help2man is required to build the documentation (optional).
+
 See [Dependencies](doc/libopenmpt/dependencies.md) and
-[Getting Started](doc/libopenmpt/gettingstarted.md).
+[Getting Started](doc/libopenmpt/gettingstarted.md) for more details about dependencies of tools and libraries required to build libopenmpt and the openmpt123 textual player application.
+
+- Basically any C++20 or C++17 compliant compiler can be used to **build** libopenmpt.
+- To **use** libopenmpt in a software project
+  - any C89 / C99 / C11 / C17 compatible compiler should work with the C API as long as a C99 compatible stdint.h is available
+  - any C++20 or C++17 compatible compiler should work with the C++ API
+- J2B support requires an inflate (deflate decompression) implementation:
+  - zlib (or miniz can be used internally)
+- MO3 support requires:
+  - libmpg123 >= 1.14.0 (or minimp3 can be used internally)
+  - libogg, libvorbis, and libvorbisfile (or stb_vorbis can be used internally)
+- Building on Unix-like systems requires:
+  - GNU make
+  - pkg-config
+- The Autotools-based build system requires:
+  - pkg-config 0.24 or higher
+  - zlib
+  - doxygen
 
 
-Contributing to OpenMPT/libopenmpt
-----------------------------------
 
+## Contributing to OpenMPT/libopenmpt
 
 See [contributing](doc/contributing.md).
 
