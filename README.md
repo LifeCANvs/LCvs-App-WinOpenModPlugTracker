@@ -38,8 +38,8 @@ For modern versions of OpenMPT with perhaps some *reduced* features and performa
 ### Historic specs
 
 For retro / legacy versions of OpemMPT:
-- Windows XP - for using experimental reduced-functionality builds of latet version of OpenMPT; or for legacy version OpenMPT 1.28.10.00
-- Windows 2000 **or** Windows 98SE / ME **with* *KernelEx* Windows NT5.x compatibility layer and all updates - for using legacy version OpenMPT 1.26.14.00
+- Windows XP - for using experimental reduced-functionality builds of current version of OpenMPT; or for legacy version OpenMPT 1.28.10.00
+- Windows 2000 **or** Windows 98SE / ME **with** *KernelEx* Windows NT5.x compatibility layer and all updates - for using legacy version OpenMPT 1.26.14.00
 - Windows 98SE / ME - for natively using legacy version OpenMPT 1.18.03.00
 
 
@@ -86,13 +86,49 @@ Older releases of OpenMPT can be found in the release archive. If you found a bu
 
 Additional information about running OpenMPT on older systems can be found in this [forum thread](https://forum.openmpt.org/index.php?topic=6188.0).
 
+## Terminal / Command-line player
+
+openmpt123 is a cross-platform command-line or terminal based module file player.
+
+- download from the release pages linked at **https://lib.openmpt.org/libopenmpt/** or the news/updates page at https://lib.openmpt.org/libopenmpt/news/
+
+Find the "Binary download links" section on the version release news page and download from the available compiled executable releases for supported systems / platforms for a particular version of openmpt123...
+
+For example, [libopenmpt 0.7.8 release (2024-06-09)](https://lib.openmpt.org/libopenmpt/2024/06/09/security-update-0.7.8-releases-0.6.17-0.5.31-0.4.43/) includes **openmpt123** player and a plugin for XMPlay, for the following systems:
+- Windows 10 21H2 / Windows 7 SP1
+- Windows XP SP1
+- Windows 98 with KernelEx compatibility layer and updates installed
+- Windows 95 / 98SE / ME native systems
+- DOS 5 (which may also work with the latest version of FreeDOS)
+
+- Also available for download are **source code** archives which could possibly compile on other systems, for which executables are not provided for download...
+- **Development library** downloads are available as well, for using the libopenmpt library with other software projects on various platforms. The libopenmpt 0.7.8 downloads include these for Windows 10 21H2 / Windows 7 SP1, Windows XP SP1, and WebAssembly / Javascript
+- **Documentation** for these releases can also be downloaded.
+
+
+## OpenMPT based module player library
+
+- see https://lib.openmpt.org/libopenmpt/
+
+libopenmpt is a cross-platform C++ and C library to decode tracked music files (modules) [wikipedia] into a raw PCM audio stream.
+
+libopenmpt is based on the player code of the OpenMPT project (Open ModPlug Tracker). In order to avoid code base fragmentation, libopenmpt is developed in the same source code repository as OpenMPT.
+
+libopenmpt ships with a plugin for XMPlay, xmp-openmpt.
+
+libopenmpt also provides a compatibility layer implementing the libmodplug interface on top of libopenmpt in the libopenmpt-modplug package.
+
+libopenmpt also did provide plugins for Winamp (in_openmpt) and foobar2000 (foo_openmpt) is the past. These are now deprecated in favour of WinAMP or WACUP which both provide their own plugin based on libopenmpt, and foo_openmpt54 which is a fork of foo_openmpt, respectively.
+
+For a large list of other software (distribution packages, player plugins, media framework support, and language bindings), see our Wiki page.
+
 
 ## License
 
 The OpenMPT/libopenmpt project is distributed under the *BSD-3-Clause* License.
 See [LICENSE](LICENSE) for the full license text.
 
-Files below the `include/` (external projects) and `contrib/` (related assets
+**Note:** Files below the `include/` (external projects) and `contrib/` (related assets
 not directly considered integral part of the project) folders may be subject to
 other licenses. See the respective subfolders for license information. These
 folders are not distributed in all source packages, and in particular they are
