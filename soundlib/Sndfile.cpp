@@ -25,6 +25,7 @@
 #include "../soundlib/AudioCriticalSection.h"
 #include "mpt/io/io.hpp"
 #include "mpt/io/io_stdstream.hpp"
+#include "mpt/random/seed.hpp"
 
 #ifdef MODPLUG_TRACKER
 #include "../mptrack/Mainfrm.h"
@@ -183,7 +184,7 @@ void CSoundFile::InitializeGlobals(MODTYPE type, CHANNELINDEX numChannels)
 		// This is such an odd behaviour that it's unlikely that any of the other formats will need it by default. Re-enable as needed.
 		m_playBehaviour.reset(kITInitialNoteMemory);
 	}
-	SetModSpecsPointer(m_pModSpecs, bestType);
+	m_pModSpecs = &GetModSpecifications(bestType);
 
 	// Delete instruments in case some previously called loader already created them.
 	for(INSTRUMENTINDEX i = 1; i <= m_nInstruments; i++)
@@ -305,6 +306,8 @@ static constexpr FileFormatLoader ModuleFormatLoaders[] =
 	MPT_DECLARE_FORMAT(MO3),
 	MPT_DECLARE_FORMAT(FTM),
 	MPT_DECLARE_FORMAT(RTM),
+	MPT_DECLARE_FORMAT(CBA),
+	MPT_DECLARE_FORMAT(ETX),
 	MPT_DECLARE_FORMAT(DSm),
 	MPT_DECLARE_FORMAT(STK),
 	MPT_DECLARE_FORMAT(XMF),
@@ -405,6 +408,14 @@ CSoundFile::ProbeResult CSoundFile::Probe(ProbeFlags flags, mpt::span<const std:
 		}
 	}
 	return result;
+}
+
+
+void CSoundFile::Create(MODTYPE type, CHANNELINDEX numChannels, CModDoc *modDoc)
+{
+	Create(FileReader{}, CSoundFile::loadCompleteModule, modDoc);
+	SetType(type);
+	ChnSettings.resize(numChannels);
 }
 
 
@@ -699,7 +710,7 @@ bool CSoundFile::CreateInternal(FileReader file, ModLoadingFlags loadFlags)
 		return false;
 	}
 
-	SetModSpecsPointer(m_pModSpecs, GetBestSaveFormat());
+	m_pModSpecs = &GetModSpecifications(GetBestSaveFormat());
 
 	// When reading a file made with an older version of MPT, it might be necessary to upgrade some settings automatically.
 	if(m_dwLastSavedWithVersion)
@@ -1650,29 +1661,29 @@ const NoteName *CSoundFile::GetDefaultNoteNames()
 #endif // MODPLUG_TRACKER
 
 
-void CSoundFile::SetModSpecsPointer(const CModSpecifications*& pModSpecs, const MODTYPE type)
+const CModSpecifications &CSoundFile::GetModSpecifications(const MODTYPE type)
 {
 	switch(type)
 	{
 		case MOD_TYPE_MPT:
-			pModSpecs = &ModSpecs::mptm;
+			return ModSpecs::mptm;
 		break;
 
 		case MOD_TYPE_IT:
-			pModSpecs = &ModSpecs::itEx;
+			return ModSpecs::itEx;
 		break;
 
 		case MOD_TYPE_XM:
-			pModSpecs = &ModSpecs::xmEx;
+			return ModSpecs::xmEx;
 		break;
 
 		case MOD_TYPE_S3M:
-			pModSpecs = &ModSpecs::s3mEx;
+			return ModSpecs::s3mEx;
 		break;
 
 		case MOD_TYPE_MOD:
 		default:
-			pModSpecs = &ModSpecs::mod;
+			return ModSpecs::mod;
 			break;
 	}
 }
@@ -1682,7 +1693,7 @@ void CSoundFile::SetType(MODTYPE type)
 {
 	m_nType = type;
 	m_playBehaviour = GetDefaultPlaybackBehaviour(GetBestSaveFormat());
-	SetModSpecsPointer(m_pModSpecs, GetBestSaveFormat());
+	m_pModSpecs = &GetModSpecifications(GetBestSaveFormat());
 }
 
 
@@ -1692,7 +1703,7 @@ void CSoundFile::ChangeModTypeTo(const MODTYPE newType, bool adjust)
 {
 	const MODTYPE oldType = GetType();
 	m_nType = newType;
-	SetModSpecsPointer(m_pModSpecs, m_nType);
+	m_pModSpecs = &GetModSpecifications(m_nType);
 
 	if(oldType == newType || !adjust)
 		return;
@@ -1891,14 +1902,6 @@ double CSoundFile::GetRowDuration(TEMPO tempo, uint32 speed) const
 }
 
 
-const CModSpecifications& CSoundFile::GetModSpecifications(const MODTYPE type)
-{
-	const CModSpecifications* p = nullptr;
-	SetModSpecsPointer(p, type);
-	return *p;
-}
-
-
 ChannelFlags CSoundFile::GetChannelMuteFlag()
 {
 #ifdef MODPLUG_TRACKER
@@ -2080,11 +2083,12 @@ bool CSoundFile::LoadExternalSample(SAMPLEINDEX smp, const mpt::PathString &file
 #endif // MPT_EXTERNAL_SAMPLES
 
 
-// Set up channel panning and volume suitable for MOD + similar files. If the current mod type is not MOD, bForceSetup has to be set to true.
-void CSoundFile::SetupMODPanning(bool bForceSetup)
+// Set up channel panning suitable for MOD + similar files. If the current mod type is not MOD, forceSetup has to be set to true for this function to take effect.
+void CSoundFile::SetupMODPanning(bool forceSetup)
 {
 	// Setup LRRL panning, max channel volume
-	if(!(GetType() & MOD_TYPE_MOD) && bForceSetup == false) return;
+	if(!(GetType() & MOD_TYPE_MOD) && !forceSetup)
+		return;
 
 	for(CHANNELINDEX chn = 0; chn < GetNumChannels(); chn++)
 	{

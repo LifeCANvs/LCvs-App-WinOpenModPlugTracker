@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { version: '14.0' }
+          - { version: '14.1' }
           - { version: '13.3' }
 
     concurrency:
@@ -26,10 +26,9 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     - name: Startup VM
-      uses: cross-platform-actions/action@v0.24.0
+      uses: cross-platform-actions/action@v0.25.0
       with:
         architecture: x86_64
-        hypervisor: qemu
         memory: 4G
         operating_system: freebsd
         version: ${{matrix.version}}
@@ -38,10 +37,9 @@ jobs:
         shutdown_vm: false
         run: true
     - name: Install dependencies
-      uses: cross-platform-actions/action@v0.24.0
+      uses: cross-platform-actions/action@v0.25.0
       with:
         architecture: x86_64
-        hypervisor: qemu
         memory: 4G
         operating_system: freebsd
         version: ${{matrix.version}}
@@ -49,12 +47,12 @@ jobs:
         sync_files: false
         shutdown_vm: false
         run: |
+          sudo pkg upgrade -y
           sudo pkg install -y subversion p5-XML-XPath git mawk gmake pkgconf autoconf autoconf-archive automake libtool help2man doxygen mpg123 libogg libvorbis flac libsndfile pulseaudio portaudio sdl2
     - name: Build
-      uses: cross-platform-actions/action@v0.24.0
+      uses: cross-platform-actions/action@v0.25.0
       with:
         architecture: x86_64
-        hypervisor: qemu
         memory: 4G
         operating_system: freebsd
         version: ${{matrix.version}}
@@ -64,10 +62,9 @@ jobs:
         run: |
           export MAKEFLAGS="-j$(sysctl -n hw.ncpu)"; ./build/autotools/autoconfiscate.sh
     - name: Shutdown VM
-      uses: cross-platform-actions/action@v0.24.0
+      uses: cross-platform-actions/action@v0.25.0
       with:
         architecture: x86_64
-        hypervisor: qemu
         memory: 4G
         operating_system: freebsd
         version: ${{matrix.version}}

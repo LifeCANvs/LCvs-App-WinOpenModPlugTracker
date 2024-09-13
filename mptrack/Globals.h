@@ -1,7 +1,7 @@
 /*
  * Globals.h
  * ---------
- * Purpose: Implementation of various views of the tracker interface.
+ * Purpose: Implementation of the base classes for the upper and lower half of the MDI child windows.
  * Notes  : (currently none)
  * Authors: OpenMPT Devs
  * The OpenMPT source code is released under the BSD license. Read LICENSE for more details.
@@ -42,6 +42,7 @@ protected:
 	CSoundFile &m_sndFile;
 	CModControlView &m_parent;
 	HWND m_hWndView = nullptr;
+	HWND m_lastFocusItem = nullptr;
 	LONG m_nLockCount = 0;
 	int m_nDPIx = 0, m_nDPIy = 0;  // Cached DPI settings
 	BOOL m_bInitialized = FALSE;
@@ -60,6 +61,10 @@ public:
 	void UnlockControls() { PostMessage(WM_MOD_UNLOCKCONTROLS); }
 	bool IsLocked() const { return (m_nLockCount > 0); }
 	virtual Setting<LONG> &GetSplitPosRef() = 0;
+
+	void SaveLastFocusItem(HWND hwnd);
+	void ForgetLastFocusItem() { m_lastFocusItem = nullptr; }
+	void RestoreLastFocusItem();
 
 	afx_msg void OnEditCut() { if (m_hWndView) ::SendMessage(m_hWndView, WM_COMMAND, ID_EDIT_CUT, 0); }
 	afx_msg void OnEditCopy() { if (m_hWndView) ::SendMessage(m_hWndView, WM_COMMAND, ID_EDIT_COPY, 0); }
@@ -88,7 +93,7 @@ public:
 	//{{AFX_MSG(CModControlDlg)
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg LRESULT OnUnlockControls(WPARAM, LPARAM) { if (m_nLockCount > 0) m_nLockCount--; return 0; }
-	afx_msg BOOL OnToolTipText(UINT, NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg BOOL OnToolTipText(UINT, NMHDR *pNMHDR, LRESULT *pResult);
 	afx_msg LRESULT OnDPIChanged(WPARAM = 0, LPARAM = 0);
 	//}}AFX_MSG
 	DECLARE_MESSAGE_MAP()
@@ -157,6 +162,7 @@ protected:
 
 protected:
 	//{{AFX_MSG(CModControlView)
+	afx_msg void OnSetFocus(CWnd *pOldWnd);
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	afx_msg void OnDestroy();
 	afx_msg void OnTabSelchange(NMHDR* pNMHDR, LRESULT* pResult);
@@ -186,6 +192,7 @@ class CModScrollView: public CScrollView
 {
 protected:
 	HWND m_hWndCtrl = nullptr;
+	HWND m_lastFocusItem = nullptr;
 	int m_nScrollPosX = 0, m_nScrollPosY = 0;
 	int m_nScrollPosXfine = 0, m_nScrollPosYfine = 0;
 	int m_nDPIx = 0, m_nDPIy = 0;  // Cached DPI settings
@@ -216,9 +223,12 @@ public:
 
 	CModControlDlg *GetControlDlg() { return static_cast<CModControlView *>(CWnd::FromHandle(m_hWndCtrl))->GetCurrentControlDlg(); }
 
+	void SaveLastFocusItem(HWND hwnd);
+
 protected:
 	//{{AFX_MSG(CModScrollView)
 	afx_msg void OnDestroy();
+	afx_msg void OnSetFocus(CWnd *pOldWnd);
 	afx_msg LRESULT OnReceiveModViewMsg(WPARAM wParam, LPARAM lParam);
 	afx_msg BOOL OnMouseWheel(UINT fFlags, short zDelta, CPoint point);
 	afx_msg void OnMouseHWheel(UINT fFlags, short zDelta, CPoint point);

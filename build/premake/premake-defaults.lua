@@ -54,6 +54,10 @@
 				files {
 					"../../build/vs/win81.manifest",
 				}
+			elseif  _OPTIONS["windows-version"] == "win8" then
+				files {
+					"../../build/vs/win8.manifest",
+				}
 			elseif  _OPTIONS["windows-version"] == "win7" then
 				files {
 					"../../build/vs/win7.manifest",
@@ -68,6 +72,10 @@
 			elseif  _OPTIONS["windows-version"] == "win81" then
 				files {
 					"../../build/vs/win81.manifest",
+				}
+			elseif  _OPTIONS["windows-version"] == "win8" then
+				files {
+					"../../build/vs/win8.manifest",
 				}
 			elseif  _OPTIONS["windows-version"] == "win7" then
 				files {
@@ -358,13 +366,26 @@
 		filter { "action:vs2019" }
 			systemversion "10.0.20348.0"
 		filter {}
-		filter { "action:vs2022" }
+		filter { "action:vs2022", "architecture:ARM" }
 			if _OPTIONS["windows-version"] == "win7" then
+				systemversion "10.0.20348.0"
+			elseif _OPTIONS["windows-version"] == "win8" then
 				systemversion "10.0.20348.0"
 			elseif _OPTIONS["windows-version"] == "win81" then
 				systemversion "10.0.20348.0"
 			else
 				systemversion "10.0.22621.0"
+			end
+		filter {}
+		filter { "action:vs2022", "not architecture:ARM" }
+			if _OPTIONS["windows-version"] == "win7" then
+				systemversion "10.0.20348.0"
+			elseif _OPTIONS["windows-version"] == "win8" then
+				systemversion "10.0.20348.0"
+			elseif _OPTIONS["windows-version"] == "win81" then
+				systemversion "10.0.20348.0"
+			else
+				systemversion "10.0.26100.0"
 			end
 		filter {}
 	end
@@ -374,21 +395,25 @@
 		defines { "_WIN32_WINNT=0x0A00" }
 		filter {}
 		filter { "architecture:x86" }
-			defines { "NTDDI_VERSION=0x0A00000A" } -- Windows 10 21H2 Build 19044
+			defines { "NTDDI_VERSION=0x0A00000C" } -- Windows 10 21H2 Build 19044
 		filter {}
 		filter { "architecture:x86_64" }
-			defines { "NTDDI_VERSION=0x0A00000A" } -- Windows 10 21H2 Build 19044
+			defines { "NTDDI_VERSION=0x0A00000C" } -- Windows 10 21H2 Build 19044
 		filter {}
 		filter { "architecture:ARM" }
-			defines { "NTDDI_VERSION=0x0A00000A" } -- Windows 10 21H2 Build 19044
+			defines { "NTDDI_VERSION=0x0A00000C" } -- Windows 10 21H2 Build 19044
 		filter {}
 		filter { "architecture:ARM64" }
-			defines { "NTDDI_VERSION=0x0A00000A" } -- Windows 10 21H2 Build 19044
+			defines { "NTDDI_VERSION=0x0A00000C" } -- Windows 10 21H2 Build 19044
 		filter {}
 	elseif _OPTIONS["windows-version"] == "win81" then
 		filter {}
 		defines { "_WIN32_WINNT=0x0603" }
 		defines { "NTDDI_VERSION=0x06030000" }
+	elseif _OPTIONS["windows-version"] == "win8" then
+		filter {}
+		defines { "_WIN32_WINNT=0x0602" }
+		defines { "NTDDI_VERSION=0x06020000" }
 	elseif _OPTIONS["windows-version"] == "win7" then
 		filter {}
 		defines { "_WIN32_WINNT=0x0601" }

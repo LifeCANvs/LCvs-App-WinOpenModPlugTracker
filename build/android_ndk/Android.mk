@@ -6,8 +6,45 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := openmpt
 
-LOCAL_CFLAGS   += -std=c17
-LOCAL_CPPFLAGS += -std=c++17 -fexceptions -frtti
+ifeq ($(NDK_MAJOR),)
+LOCAL_CFLAGS   += -std=c18
+LOCAL_CPPFLAGS += -std=c++17
+else
+ifeq ($(NDK_MAJOR),21)
+# clang 9
+LOCAL_CFLAGS   += -std=c18
+LOCAL_CPPFLAGS += -std=c++17
+else ifeq ($(NDK_MAJOR),22)
+# clang 11
+LOCAL_CFLAGS   += -std=c18
+LOCAL_CPPFLAGS += -std=c++20
+else ifeq ($(NDK_MAJOR),23)
+# clang 12
+LOCAL_CFLAGS   += -std=c18
+LOCAL_CPPFLAGS += -std=c++20
+else ifeq ($(NDK_MAJOR),24)
+# clang 14
+LOCAL_CFLAGS   += -std=c18
+LOCAL_CPPFLAGS += -std=c++20
+else ifeq ($(NDK_MAJOR),25)
+# clang 14
+LOCAL_CFLAGS   += -std=c18
+LOCAL_CPPFLAGS += -std=c++20
+else ifeq ($(NDK_MAJOR),26)
+# clang 17
+LOCAL_CFLAGS   += -std=c18
+LOCAL_CPPFLAGS += -std=c++20
+else ifeq ($(NDK_MAJOR),27)
+# clang 18
+LOCAL_CFLAGS   += -std=c23
+LOCAL_CPPFLAGS += -std=c++23
+else
+LOCAL_CFLAGS   += -std=c23
+LOCAL_CPPFLAGS += -std=c++23
+endif
+endif
+
+LOCAL_CPPFLAGS += -fexceptions -frtti
 
 LOCAL_CPP_FEATURES += exceptions rtti
 
@@ -117,12 +154,14 @@ LOCAL_SRC_FILES += \
 	soundlib/Load_amf.cpp \
 	soundlib/Load_ams.cpp \
 	soundlib/Load_c67.cpp \
+	soundlib/Load_cba.cpp \
 	soundlib/Load_dbm.cpp \
 	soundlib/Load_digi.cpp \
 	soundlib/Load_dmf.cpp \
 	soundlib/Load_dsm.cpp \
 	soundlib/Load_dsym.cpp \
 	soundlib/Load_dtm.cpp \
+	soundlib/Load_etx.cpp \
 	soundlib/Load_far.cpp \
 	soundlib/Load_fmt.cpp \
 	soundlib/Load_ftm.cpp \

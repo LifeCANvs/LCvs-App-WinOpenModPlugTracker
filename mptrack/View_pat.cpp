@@ -82,6 +82,7 @@ BEGIN_MESSAGE_MAP(CViewPattern, CModScrollView)
 	ON_COMMAND(ID_EDIT_SPLITKEYBOARDSETTINGS,	&CViewPattern::SetSplitKeyboardSettings)
 	ON_COMMAND(ID_EDIT_UNDO,		&CViewPattern::OnEditUndo)
 	ON_COMMAND(ID_EDIT_REDO,		&CViewPattern::OnEditRedo)
+	ON_COMMAND(ID_CHANNEL_SETTINGS,	&CViewPattern::OnChannelSettings)
 	ON_COMMAND(ID_PATTERN_CHNRESET,	&CViewPattern::OnChannelReset)
 	ON_COMMAND(ID_PATTERN_MUTE,		&CViewPattern::OnMuteFromClick)
 	ON_COMMAND(ID_PATTERN_SOLO,		&CViewPattern::OnSoloFromClick)
@@ -766,9 +767,10 @@ void CViewPattern::OnDestroy()
 }
 
 
+// cppcheck-suppress duplInheritedMember
 void CViewPattern::OnSetFocus(CWnd *pOldWnd)
 {
-	CScrollView::OnSetFocus(pOldWnd);
+	CModScrollView::OnSetFocus(pOldWnd);
 	m_Status.set(psFocussed);
 	InvalidateRow();
 	CModDoc *pModDoc = GetDocument();
@@ -2739,6 +2741,16 @@ void CViewPattern::OnResetChannelColors()
 }
 
 
+void CViewPattern::OnChannelSettings()
+{
+	CPoint pt = GetPointFromPosition(m_MenuCursor);
+	pt.x += GetChannelWidth() / 2;
+	pt.y = m_szHeader.cy / 2;
+	ClientToScreen(&pt);
+	m_quickChannelProperties.Show(GetDocument(), m_MenuCursor.GetChannel(), pt);
+}
+
+
 void CViewPattern::OnTransposeChannel()
 {
 	CInputDlg dlg(this, _T("Enter transpose amount (affects all patterns):"), -(NOTE_MAX - NOTE_MIN), (NOTE_MAX - NOTE_MIN), m_nTransposeAmount);
@@ -3266,7 +3278,7 @@ void CViewPattern::OnRunScript()
 
 void CViewPattern::OnSwitchToOrderList()
 {
-	PostCtrlMessage(CTRLMSG_SETFOCUS);
+	PostCtrlMessage(CTRLMSG_PAT_SETORDERLISTFOCUS);
 }
 
 
@@ -4515,6 +4527,14 @@ LRESULT CViewPattern::OnCustomKeyMsg(WPARAM wParam, LPARAM lParam)
 			SetCurrentColumn(sndFile.GetNumChannels() - 1, m_nDetailLevel);
 			if(GetCurrentRow() < pModDoc->GetPatternSize(m_nPattern) - 1)
 				SetCurrentRow(pModDoc->GetPatternSize(m_nPattern) - 1);
+			return wParam;
+
+		case kcGotoNoteColumn:
+		case kcGotoInstrColumn:
+		case kcGotoVolumeColumn:
+		case kcGotoCommandColumn:
+		case kcGotoParamColumn:
+			SetCurrentColumn(m_Cursor.GetChannel(), static_cast<PatternCursor::Columns>(wParam - kcGotoNoteColumn + PatternCursor::firstColumn));
 			return wParam;
 
 		case kcPrevEntryInColumn:
@@ -6722,6 +6742,8 @@ bool CViewPattern::BuildChannelControlCtxMenu(HMENU hMenu, CInputHandler *ih) co
 	DWORD canAddChannels = (numChannels < specs.channelsMax) ? 0 : MF_GRAYED;
 	DWORD canRemoveChannels = (numChannels > specs.channelsMin) ? 0 : MF_GRAYED;
 
+	AppendMenu(hMenu, MF_SEPARATOR, 0, _T(""));
+	AppendMenu(hMenu, MF_STRING, ID_CHANNEL_SETTINGS, ih->GetKeyTextFromCommand(kcChannelSettings, _T("C&hannel Settings")));
 	AppendMenu(hMenu, MF_SEPARATOR, 0, _T(""));
 
 	AppendMenu(hMenu, MF_STRING, ID_PATTERN_TRANSPOSECHANNEL, ih->GetKeyTextFromCommand(kcChannelTranspose, _T("&Transpose Channel")));

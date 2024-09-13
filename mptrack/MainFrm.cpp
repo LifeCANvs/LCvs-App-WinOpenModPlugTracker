@@ -23,6 +23,7 @@
 #include "Globals.h"
 #include "ImageLists.h"
 #include "InputHandler.h"
+#include "IPCWindow.h"
 #include "KeyConfigDlg.h"
 #include "Moddoc.h"
 #include "ModDocTemplate.h"
@@ -55,20 +56,21 @@
 #include "openmpt/sounddevice/SoundDeviceBuffer.hpp"
 #include "openmpt/sounddevice/SoundDeviceManager.hpp"
 
+#ifdef MPT_ENABLE_PLAYBACK_TEST_MENU
+#include "../unarchiver/ungzip.h"
+#include "../common/GzipWriter.h"
+#endif
+
 #include <HtmlHelp.h>
 #include <Dbt.h>  // device change messages
 
 
 OPENMPT_NAMESPACE_BEGIN
 
-#define TIMERID_GUI 1
-#define TIMERID_NOTIFY 2
+static constexpr uint32 TIMERID_GUI = 1;
+static constexpr uint32 TIMERID_NOTIFY = 2;
 
-#define MPTTIMER_PERIOD		200
-
-#if defined(MPT_BUILD_DEBUG)
-#define MPT_ENABLE_PLAYBACK_TEST_MENU
-#endif
+static constexpr uint32 MPTTIMER_PERIOD = 100;
 
 /////////////////////////////////////////////////////////////////////////////
 // CMainFrame
@@ -147,23 +149,24 @@ END_MESSAGE_MAP()
 
 // Globals
 OptionsPage CMainFrame::m_nLastOptionsPage = OPTIONS_PAGE_DEFAULT;
-HHOOK CMainFrame::ghKbdHook = NULL;
+HHOOK CMainFrame::ghKbdHook = nullptr;
+HHOOK CMainFrame::g_focusHook = nullptr;
 
 // GDI
-HICON CMainFrame::m_hIcon = NULL;
-HFONT CMainFrame::m_hGUIFont = NULL;
-HFONT CMainFrame::m_hFixedFont = NULL;
-HPEN CMainFrame::penDarkGray = NULL;
-HPEN CMainFrame::penGray99 = NULL;
-HPEN CMainFrame::penHalfDarkGray = NULL;
+HICON CMainFrame::m_hIcon = nullptr;
+HFONT CMainFrame::m_hGUIFont = nullptr;
+HFONT CMainFrame::m_hFixedFont = nullptr;
+HPEN CMainFrame::penDarkGray = nullptr;
+HPEN CMainFrame::penGray99 = nullptr;
+HPEN CMainFrame::penHalfDarkGray = nullptr;
 
-HCURSOR CMainFrame::curDragging = NULL;
-HCURSOR CMainFrame::curArrow = NULL;
-HCURSOR CMainFrame::curNoDrop = NULL;
-HCURSOR CMainFrame::curNoDrop2 = NULL;
-HCURSOR CMainFrame::curVSplit = NULL;
+HCURSOR CMainFrame::curDragging = nullptr;
+HCURSOR CMainFrame::curArrow = nullptr;
+HCURSOR CMainFrame::curNoDrop = nullptr;
+HCURSOR CMainFrame::curNoDrop2 = nullptr;
+HCURSOR CMainFrame::curVSplit = nullptr;
 MODPLUGDIB *CMainFrame::bmpNotes = nullptr;
-COLORREF CMainFrame::gcolrefVuMeter[NUM_VUMETER_PENS*2];
+COLORREF CMainFrame::gcolrefVuMeter[NUM_VUMETER_PENS * 2];
 
 CInputHandler *CMainFrame::m_InputHandler = nullptr;
 
@@ -232,6 +235,7 @@ void CMainFrame::Initialize()
 
 	// Setup Keyboard Hook
 	ghKbdHook = SetWindowsHookEx(WH_KEYBOARD, KeyboardProc, AfxGetInstanceHandle(), GetCurrentThreadId());
+	g_focusHook = SetWindowsHookEx(WH_CBT, FocusChangeProc, AfxGetInstanceHandle(), GetCurrentThreadId());
 
 	// Update the tree
 	m_wndTree.Init();
@@ -348,18 +352,24 @@ BOOL CMainFrame::DestroyWindow()
 #endif
 
 	// Uninstall Keyboard Hook
-	if (ghKbdHook)
+	if(ghKbdHook)
 	{
 		UnhookWindowsHookEx(ghKbdHook);
-		ghKbdHook = NULL;
+		ghKbdHook = nullptr;
+	}
+	if(g_focusHook)
+	{
+		UnhookWindowsHookEx(g_focusHook);
+		g_focusHook = nullptr;
 	}
 	// Kill Timer
-	if (m_nTimer)
+	if(m_nTimer)
 	{
 		KillTimer(m_nTimer);
 		m_nTimer = 0;
 	}
-	if (shMidiIn) midiCloseDevice();
+	if(shMidiIn)
+		midiCloseDevice();
 	// Delete bitmaps
 	delete bmpNotes;
 	bmpNotes = nullptr;
@@ -486,11 +496,13 @@ void CMainFrame::OnDropFiles(HDROP hDropInfo)
 }
 
 
-void CMainFrame::OnActivateApp(BOOL active, DWORD /*threadID*/)
+void CMainFrame::OnActivateApp(BOOL active, DWORD threadID)
 {
-	// Ensure modifiers are reset when we leave the window (e.g. Alt-Tab)
-	if(!active)
-		m_InputHandler->SetModifierMask(ModNone);
+	if(active)
+		IPCWindow::UpdateLastUsed();
+	else	
+		m_InputHandler->SetModifierMask(ModNone);	// Ensure modifiers are reset when we leave the window (e.g. Alt-Tab)
+	CMDIFrameWnd::OnActivateApp(active, threadID);
 }
 
 
@@ -554,6 +566,57 @@ LRESULT CALLBACK CMainFrame::KeyboardProc(int code, WPARAM wParam, LPARAM lParam
 	}
 
 	return result;
+}
+
+
+LRESULT CALLBACK CMainFrame::FocusChangeProc(int code, WPARAM wParam, LPARAM lParam)
+{
+	// Hook to keep track of last focussed GUI item. This solves various focus issues when switching between
+	// CModControlDlg / CModScrollView via keyboard shortcuts, or when switching to another application and back.
+	// See https://bugs.openmpt.org/view.php?id=1795 / https://bugs.openmpt.org/view.php?id=1799 / https://bugs.openmpt.org/view.php?id=1800
+	if(code != HCBT_SETFOCUS || !wParam || !lParam)
+		return CallNextHookEx(g_focusHook, code, wParam, lParam);
+
+	const HWND mainWnd = CMainFrame::GetMainFrame()->GetSafeHwnd();
+	HWND lostFocusWnd = reinterpret_cast<HWND>(lParam), gainFocusWnd = reinterpret_cast<HWND>(wParam);
+	CModControlDlg *parentCtrl = nullptr;
+	CModScrollView *parentScroll = nullptr;
+	do
+	{
+		// Does the window that lost focus belong to the upper or lower half of a module view?
+		auto wnd = CWnd::FromHandlePermanent(lostFocusWnd);
+		if(parentCtrl = dynamic_cast<CModControlDlg *>(wnd); parentCtrl != nullptr)
+			break;
+		else if(parentScroll = dynamic_cast<CModScrollView *>(wnd); parentScroll != nullptr)
+			break;
+
+		lostFocusWnd = ::GetParent(lostFocusWnd);
+	} while(lostFocusWnd && lostFocusWnd != mainWnd);
+
+	if(parentCtrl || parentScroll)
+	{
+		// Focus was lost inside an MDI view. Check if the new focus item inside the same view.
+		// If both are part of the same view, store the new focus item, otherwise the old one.
+		bool sameParent = false;
+		do
+		{
+			if((parentCtrl && gainFocusWnd == parentCtrl->m_hWnd) || (parentScroll && gainFocusWnd == parentScroll->m_hWnd))
+			{
+				sameParent = true;
+				break;
+			}
+
+			gainFocusWnd = ::GetParent(gainFocusWnd);
+		} while(gainFocusWnd && gainFocusWnd != mainWnd);
+
+		HWND lastFocus = sameParent ? reinterpret_cast<HWND>(wParam) : reinterpret_cast<HWND>(lParam);
+		if(parentCtrl && parentCtrl->m_hWnd != lastFocus)
+			parentCtrl->SaveLastFocusItem(lastFocus);
+		else if(parentScroll && parentScroll->m_hWnd != lastFocus)
+			parentScroll->SaveLastFocusItem(lastFocus);
+	}
+
+	return CallNextHookEx(g_focusHook, code, wParam, lParam);
 }
 
 
@@ -1041,10 +1104,10 @@ bool CMainFrame::DoNotification(DWORD dwSamplesRead, int64 streamPosition)
 	FlagSet<Notification::Type> notifyType(Notification::Default);
 	Notification::Item notifyItem = 0;
 
-	if(m_pSndFile->m_pModDoc)
+	if(CModDoc *modDoc = m_pSndFile->GetpModDoc())
 	{
-		notifyType = m_pSndFile->m_pModDoc->GetNotificationType();
-		notifyItem = m_pSndFile->m_pModDoc->GetNotificationItem();
+		notifyType = modDoc->GetNotificationType();
+		notifyItem = modDoc->GetNotificationItem();
 	}
 
 	// Add an entry to the notification history
@@ -1643,7 +1706,8 @@ bool CMainFrame::PlaySoundFile(CSoundFile &sndFile, INSTRUMENTINDEX nInstrument,
 	{
 		CriticalSection cs;
 		InitPreview();
-		m_WaveFile.m_nType = sndFile.GetType();
+		m_WaveFile.ChangeModTypeTo(sndFile.GetType(), false);
+		m_WaveFile.m_playBehaviour = sndFile.m_playBehaviour;
 		if ((nInstrument) && (nInstrument <= sndFile.GetNumInstruments()))
 		{
 			m_WaveFile.m_nInstruments = 1;
@@ -1682,11 +1746,9 @@ bool CMainFrame::PlaySoundFile(CSoundFile &sndFile, INSTRUMENTINDEX nInstrument,
 void CMainFrame::InitPreview()
 {
 	m_WaveFile.Destroy();
-	m_WaveFile.Create(FileReader());
+	m_WaveFile.Create(MOD_TYPE_MPT, 2);
 	m_WaveFile.Order().SetDefaultTempoInt(125);
 	m_WaveFile.Order().SetDefaultSpeed(6);
-	m_WaveFile.m_nType = MOD_TYPE_MPT;
-	m_WaveFile.ChnSettings.resize(2);
 	m_WaveFile.m_nInstruments = 1;
 	m_WaveFile.m_nTempoMode = TempoMode::Classic;
 	m_WaveFile.Order().assign(1, 0);
@@ -2114,10 +2176,9 @@ void CMainFrame::OnTimerGUI()
 	IdleHandlerSounddevice();
 
 	// Display Time in status bar
-	samplecount_t time = 0;
 	if(m_pSndFile != nullptr && m_pSndFile->GetSampleRate() != 0)
 	{
-		time = m_pSndFile->GetTotalSampleCount() / m_pSndFile->GetSampleRate();
+		samplecount_t time = Util::muldivr(m_pSndFile->GetTotalSampleCount(), 10, m_pSndFile->GetSampleRate());
 		if(time != m_dwTimeSec)
 		{
 			m_dwTimeSec = time;
@@ -2223,8 +2284,9 @@ void CMainFrame::SwitchToActiveView()
 void CMainFrame::OnUpdateTime(CCmdUI *)
 {
 	TCHAR s[64];
-	wsprintf(s, _T("%u:%02u:%02u"),
-		m_dwTimeSec / 3600, (m_dwTimeSec / 60) % 60, m_dwTimeSec % 60);
+	auto timeSec = m_dwTimeSec / 10u;
+	wsprintf(s, _T("%u:%02u:%02u.%u"),
+		timeSec / 3600u, (timeSec / 60u) % 60u, timeSec % 60u, m_dwTimeSec % 10u);
 
 	if(m_pSndFile != nullptr && m_pSndFile != &m_WaveFile && !m_pSndFile->IsPaused())
 	{
@@ -2233,9 +2295,9 @@ void CMainFrame::OnUpdateTime(CCmdUI *)
 		{
 			if(nPat < 10) _tcscat(s, _T(" "));
 			if(nPat < 100) _tcscat(s, _T(" "));
-			wsprintf(s + _tcslen(s), _T(" [%d]"), nPat);
+			wsprintf(s + _tcslen(s), _T(" [%u]"), nPat);
 		}
-		wsprintf(s + _tcslen(s), _T(" %dch"), m_nAvgMixChn);
+		wsprintf(s + _tcslen(s), _T(" %uch"), m_nAvgMixChn);
 	}
 	m_wndStatusBar.SetPaneText(m_wndStatusBar.CommandToIndex(ID_INDICATOR_TIME), s, TRUE);
 }
@@ -2487,7 +2549,7 @@ LRESULT CMainFrame::OnCustomKeyMsg(WPARAM wParam, LPARAM lParam)
 	{
 		case kcViewTree: OnBarCheck(IDD_TREEVIEW); break;
 		case kcViewOptions: OnViewOptions(); break;
-		case kcViewMain: OnBarCheck(59392 /* MAINVIEW */); break;
+		case kcViewMain: OnBarCheck(ID_VIEW_TOOLBAR); break;
 	 	case kcFileImportMidiLib: OnImportMidiLib(); break;
 		case kcFileAddSoundBank: OnAddDlsBank(); break;
 		case kcPauseSong:	OnPlayerPause(); break;
@@ -2555,6 +2617,8 @@ LRESULT CMainFrame::OnCustomKeyMsg(WPARAM wParam, LPARAM lParam)
 			}
 
 		case kcSwitchToInstrLibrary:
+			if(!m_wndTree.IsVisible())
+				break;
 			if(m_bModTreeHasFocus)
 				SwitchToActiveView();
 			else
@@ -3202,10 +3266,20 @@ void CMainFrame::OnCreateMixerDump()
 			continue;
 		if(!sndFile->Create(GetFileReader(f)))
 			continue;
-		auto playTest = sndFile->CreatePlaybackTest();
+		auto playTest = sndFile->CreatePlaybackTest(PlaybackTestSettings{});
 		mpt::ofstream outFile(fileName + P_(".testdata.gz"), std::ios::binary | std::ios::trunc);
 		if(outFile)
-			playTest.Serialize(outFile, fileName.GetFilename().ToUnicode() + U_(".testdata"));
+		{
+			std::ostringstream outStream;
+			playTest.Serialize(outStream);
+			#ifdef MPT_WITH_ZLIB
+				std::string outData = std::move(outStream).str();
+				WriteGzip(outFile, outData, fileName.GetFilename().ToUnicode() + U_(".testdata"));
+			#else
+				// miniz doesn't have gzip convenience functions
+				outFile << std::move(outStream).str();
+			#endif
+		}
 	}
 }
 
@@ -3236,11 +3310,20 @@ void CMainFrame::OnVerifyMixerDump()
 			if(!modFile.IsValid())
 				throw std::runtime_error{"Cannot open module data file: " + modFileName.ToUTF8()};
 
-			PlaybackTest playTest{GetFileReader(testFile)};
+			FileReader testFileReader = GetFileReader(testFile);
+			CGzipArchive archive{testFileReader};
+			if(archive.IsArchive())
+			{
+				if(!archive.ExtractFile(0))
+					throw std::runtime_error{"Cannot extract test data file!"};
+				testFileReader = archive.GetOutputFile();
+			}
+
+			PlaybackTest playTest{testFileReader};
 			auto sndFile = std::make_unique<CSoundFile>();
 			sndFile->Create(GetFileReader(modFile));
 
-			const auto result = playTest.Compare(*sndFile);
+			const auto result = PlaybackTest::Compare(playTest, sndFile->CreatePlaybackTest(playTest.GetSettings()));
 			if(!result.empty())
 			{
 				InfoDialog infoDlg{this};

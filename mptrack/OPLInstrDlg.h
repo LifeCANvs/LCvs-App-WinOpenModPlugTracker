@@ -23,12 +23,14 @@ class OPLInstrDlg : public CDialog
 	CComboBox m_waveform[2];
 	CSize m_windowSize;
 	CWnd &m_parent;
+	HWND m_lastFocusItem = nullptr;
 	const CSoundFile &m_sndFile;
 	OPLPatch *m_patch;
 
 public:
 	OPLInstrDlg(CWnd &parent, const CSoundFile &sndFile);
 	~OPLInstrDlg();
+	void SetEnabled(bool enabled);
 	void SetPatch(OPLPatch &patch);
 	CSize GetMinimumSize() const { return m_windowSize; }
 

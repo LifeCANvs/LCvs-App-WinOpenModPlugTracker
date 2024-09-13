@@ -31,22 +31,23 @@ namespace IPCWindow
 
 	void Close();
 
+	void UpdateLastUsed();
+
 	LRESULT SendIPC(HWND ipcWnd, Function function, mpt::const_byte_span data = mpt::const_byte_span());
 
 	template <typename Tdata> LRESULT SendIPC(HWND ipcWnd, Function function, mpt::span<const Tdata> data) { return SendIPC(ipcWnd, function, mpt::const_byte_span(reinterpret_cast<const std::byte*>(data.data()), data.size() * sizeof(Tdata))); }
 
 	enum InstanceRequirements
 	{
+		None             = 0x00u,
 		SamePath         = 0x01u,
 		SameSettings     = 0x02u,
 		SameArchitecture = 0x04u,
-		SameVersion      = 0x08u
+		SameVersion      = 0x08u,
 	};
 	MPT_DECLARE_ENUM(InstanceRequirements)
 
-	HWND FindIPCWindow();
-
-	HWND FindIPCWindow(FlagSet<InstanceRequirements> require);
+	HWND FindIPCWindow(FlagSet<InstanceRequirements> require = None);
 
 	// Send file open requests to other OpenMPT instance, if there is one
 	bool SendToIPC(const std::vector<mpt::PathString> &filenames, bool autoplay);

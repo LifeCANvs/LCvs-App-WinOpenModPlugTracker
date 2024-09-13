@@ -27,13 +27,13 @@
 #include "ModDocTemplate.h"
 #include "Mpdlgs.h"
 #include "Reporting.h"
-#include "StreamEncoderAU.h"
-#include "StreamEncoderFLAC.h"
-#include "StreamEncoderMP3.h"
-#include "StreamEncoderOpus.h"
-#include "StreamEncoderRAW.h"
-#include "StreamEncoderVorbis.h"
-#include "StreamEncoderWAV.h"
+#include "openmpt/streamencoder/StreamEncoderAU.hpp"
+#include "openmpt/streamencoder/StreamEncoderFLAC.hpp"
+#include "openmpt/streamencoder/StreamEncoderMP3.hpp"
+#include "openmpt/streamencoder/StreamEncoderOpus.hpp"
+#include "openmpt/streamencoder/StreamEncoderRAW.hpp"
+#include "openmpt/streamencoder/StreamEncoderVorbis.hpp"
+#include "openmpt/streamencoder/StreamEncoderWAV.hpp"
 #include "TempoSwingDialog.h"
 #include "WindowMessages.h"
 #include "../common/mptStringBuffer.h"
@@ -243,7 +243,7 @@ BOOL CModDoc::OnOpenDocument(LPCTSTR lpszPathName)
 		MPT_CFORMAT("File: {}\nLast saved with: {}, you are using OpenMPT {}\n\n")
 		(filename, m_SndFile.m_modFormat.madeWithTracker, Version::Current()));
 
-	if((m_SndFile.m_nType == MOD_TYPE_NONE) || (!m_SndFile.GetNumChannels()))
+	if((GetModType() == MOD_TYPE_NONE) || (!m_SndFile.GetNumChannels()))
 		return FALSE;
 
 	const bool noColors = std::find_if(std::begin(m_SndFile.ChnSettings), std::begin(m_SndFile.ChnSettings) + GetNumChannels(), [](const auto &settings) {
@@ -330,24 +330,39 @@ bool CModDoc::OnSaveDocument(const mpt::PathString &filename, const bool setPath
 		mpt::IO::ofstream &f = sf;
 		if(f)
 		{
-			if(m_SndFile.m_SongFlags[SONG_IMPORTED] && !(GetModType() & (MOD_TYPE_MOD | MOD_TYPE_S3M)))
+			if(m_SndFile.m_SongFlags[SONG_IMPORTED])
 			{
-				// Check if any non-supported playback behaviours are enabled due to being imported from a different format
-				const auto supportedBehaviours = m_SndFile.GetSupportedPlaybackBehaviour(GetModType());
-				bool showWarning = true;
-				for(size_t i = 0; i < kMaxPlayBehaviours; i++)
+				const auto formatName = m_SndFile.GetModSpecifications().GetFileExtensionUpper();
+				if(!(GetModType() & (MOD_TYPE_MOD | MOD_TYPE_S3M)))
 				{
-					if(m_SndFile.m_playBehaviour[i] && !supportedBehaviours[i])
+					// Check if any non-supported playback behaviours are enabled due to being imported from a different format
+					const auto supportedBehaviours = m_SndFile.GetSupportedPlaybackBehaviour(GetModType());
+					bool showWarning = true;
+					for(size_t i = 0; i < kMaxPlayBehaviours; i++)
 					{
-						if(showWarning)
+						if(m_SndFile.m_playBehaviour[i] && !supportedBehaviours[i])
 						{
-							AddToLog(LogWarning, MPT_UFORMAT("Some imported Compatibility Settings that are not supported by the {} format have been disabled. Verify that the module still sounds as intended.")
-								(m_SndFile.GetModSpecifications().GetFileExtensionUpper()));
-							showWarning = false;
+							if(showWarning)
+							{
+								AddToLog(LogWarning, MPT_UFORMAT("Some imported Compatibility Settings that are not supported by the {} format have been disabled. Verify that the module still sounds as intended.")
+									(formatName));
+								showWarning = false;
+							}
+							m_SndFile.m_playBehaviour.reset(i);
 						}
-						m_SndFile.m_playBehaviour.reset(i);
 					}
 				}
+
+				for(INSTRUMENTINDEX i = 1; i <= GetNumInstruments(); i++)
+				{
+					if(m_SndFile.Instruments[i] && m_SndFile.Instruments[i]->synth.HasScripts())
+					{
+						AddToLog(LogWarning, MPT_UFORMAT("Scripted instruments are not supported by the {} format and will not be exported.")(formatName));
+						break;
+					}
+				}
+				if(!m_SndFile.m_globalScript.empty())
+					AddToLog(LogWarning, MPT_UFORMAT("Global instrument scripts are not supported by the {} format and will not be exported.")(formatName));
 			}
 
 			f.exceptions(f.exceptions() | std::ios::badbit | std::ios::failbit);
@@ -1267,7 +1282,7 @@ bool CModDoc::IsNotePlaying(UINT note, SAMPLEINDEX nsmp, INSTRUMENTINDEX nins)
 {
 	for(ModChannel &chn : m_SndFile.m_PlayState.BackgroundChannels(m_SndFile))
 	{
-		if(chn.isPreviewNote && chn.nLength != 0 && !chn.dwFlags[CHN_NOTEFADE | CHN_KEYOFF| CHN_MUTE]
+		if(chn.isPreviewNote && chn.nLength != 0 && !chn.dwFlags[CHN_NOTEFADE | CHN_KEYOFF | CHN_MUTE]
 		   && (note == chn.nNewNote || note == NOTE_NONE)
 		   && (chn.pModSample == &m_SndFile.GetSample(nsmp) || !nsmp)
 		   && (chn.pModInstrument == m_SndFile.Instruments[nins] || !nins))

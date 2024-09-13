@@ -410,6 +410,7 @@ protected:
 	afx_msg void OnLButtonDblClk(UINT, CPoint);
 	afx_msg void OnRButtonDown(UINT, CPoint);
 	afx_msg void OnVScroll(UINT nSBCode, UINT nPos, CScrollBar *pScrollBar);
+	// cppcheck-suppress duplInheritedMember
 	afx_msg void OnSetFocus(CWnd *pOldWnd);
 	afx_msg void OnKillFocus(CWnd *pNewWnd);
 	afx_msg void OnEditCut();
@@ -474,6 +475,7 @@ protected:
 	afx_msg void OnAddChannelAfter() { AddChannel(m_MenuCursor.GetChannel(), true); };
 	afx_msg void OnDuplicateChannel();
 	afx_msg void OnResetChannelColors();
+	afx_msg void OnChannelSettings();
 	afx_msg void OnTransposeChannel();
 	afx_msg void OnRemoveChannel();
 	afx_msg void OnRemoveChannelDialog();

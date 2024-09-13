@@ -87,8 +87,8 @@ bool CSoundFile::ReadWAV(FileReader &file, ModLoadingFlags loadFlags)
 		return false;
 	}
 
-	m_modFormat.formatName = U_("RIFF WAVE");
-	m_modFormat.type = U_("wav");
+	m_modFormat.formatName = UL_("RIFF WAVE");
+	m_modFormat.type = UL_("wav");
 	m_modFormat.charset = mpt::Charset::Windows1252;
 	
 	const SmpLength sampleLength = wavFile.GetSampleLength();
@@ -175,9 +175,9 @@ bool CSoundFile::ReadWAV(FileReader &file, ModLoadingFlags loadFlags)
 		if(wavFile.GetSampleFormat() == WAVFormatChunk::fmtFloat)
 		{
 			if(wavFile.GetBitsPerSample() <= 32)
-				CopyWavChannel<SC::ConversionChain<SC::Convert<int16, float32>, SC::DecodeFloat32<littleEndian32>>>(sample, sampleChunk, channel, wavFile.GetNumChannels());
+				CopyWavChannel<SC::ConversionChain<SC::Convert<int16, somefloat32>, SC::DecodeFloat32<littleEndian32>>>(sample, sampleChunk, channel, wavFile.GetNumChannels());
 			else
-				CopyWavChannel<SC::ConversionChain<SC::Convert<int16, float64>, SC::DecodeFloat64<littleEndian64>>>(sample, sampleChunk, channel, wavFile.GetNumChannels());
+				CopyWavChannel<SC::ConversionChain<SC::Convert<int16, somefloat64>, SC::DecodeFloat64<littleEndian64>>>(sample, sampleChunk, channel, wavFile.GetNumChannels());
 		} else
 		{
 			if(wavFile.GetBitsPerSample() <= 8)

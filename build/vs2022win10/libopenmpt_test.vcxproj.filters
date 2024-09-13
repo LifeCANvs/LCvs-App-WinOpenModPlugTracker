@@ -163,6 +163,9 @@
     <Filter Include="src\openmpt\base">
       <UniqueIdentifier>{C98E1EFB-B587-3D4D-DEB9-22D2CA111D59}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\openmpt\fileformat_base">
+      <UniqueIdentifier>{116B1150-7D78-3F36-065F-3B21726B0BED}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\openmpt\logging">
       <UniqueIdentifier>{755E42FE-E1BF-1F0C-6A2D-66BED68D56CB}</UniqueIdentifier>
     </Filter>
@@ -171,6 +174,12 @@
     </Filter>
     <Filter Include="src\openmpt\soundbase">
       <UniqueIdentifier>{523C5D0D-BEA8-1808-879C-B065F3C73A70}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\openmpt\soundfile_data">
+      <UniqueIdentifier>{101B62C4-FC2A-0E95-65E4-72B35113FD2D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\openmpt\soundfile_write">
+      <UniqueIdentifier>{21750652-8D82-3438-1669-3023827500EF}</UniqueIdentifier>
     </Filter>
     <Filter Include="test">
       <UniqueIdentifier>{65689E7C-519F-9F0D-FA8B-8510E6A11B0F}</UniqueIdentifier>
@@ -181,6 +190,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\common\BuildSettings.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\BuildSettingsCompiler.h">
       <Filter>common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\common\ComponentManager.h">
@@ -585,6 +597,9 @@
     <ClInclude Include="..\..\src\mpt\base\constexpr_throw.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\mpt\base\debugging.hpp">
+      <Filter>src\mpt\base</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\detect.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
@@ -606,7 +621,7 @@
     <ClInclude Include="..\..\src\mpt\base\detect_quirks.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\mpt\base\floatingpoint.hpp">
+    <ClInclude Include="..\..\src\mpt\base\float.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\integer.hpp">
@@ -677,6 +692,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\tests\tests_base_wrapping_divide.hpp">
       <Filter>src\mpt\base\tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\mpt\base\type_traits.hpp">
+      <Filter>src\mpt\base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\utility.hpp">
       <Filter>src\mpt\base</Filter>
@@ -957,6 +975,9 @@
     <ClInclude Include="..\..\src\mpt\path\path.hpp">
       <Filter>src\mpt\path</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\mpt\random\any_engine.hpp">
+      <Filter>src\mpt\random</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\mpt\random\crand.hpp">
       <Filter>src\mpt\random</Filter>
     </ClInclude>
@@ -1026,6 +1047,9 @@
     <ClInclude Include="..\..\src\openmpt\all\BuildSettings.hpp">
       <Filter>src\openmpt\all</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\openmpt\all\PlatformFixes.hpp">
+      <Filter>src\openmpt\all</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\openmpt\base\Endian.hpp">
       <Filter>src\openmpt\base</Filter>
     </ClInclude>
@@ -1037,6 +1061,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\openmpt\base\Types.hpp">
       <Filter>src\openmpt\base</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\openmpt\fileformat_base\magic.hpp">
+      <Filter>src\openmpt\fileformat_base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\openmpt\logging\Logger.hpp">
       <Filter>src\openmpt\logging</Filter>
@@ -1088,6 +1115,15 @@
     </ClInclude>
     <ClInclude Include="..\..\src\openmpt\soundbase\SampleFormat.hpp">
       <Filter>src\openmpt\soundbase</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\openmpt\soundfile_data\tags.hpp">
+      <Filter>src\openmpt\soundfile_data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\openmpt\soundfile_data\wav.hpp">
+      <Filter>src\openmpt\soundfile_data</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\openmpt\soundfile_write\wav_write.hpp">
+      <Filter>src\openmpt\soundfile_write</Filter>
     </ClInclude>
     <ClInclude Include="..\..\test\PlaybackTest.h">
       <Filter>test</Filter>
@@ -1223,6 +1259,9 @@
     <ClCompile Include="..\..\soundlib\Load_c67.cpp">
       <Filter>soundlib</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\soundlib\Load_cba.cpp">
+      <Filter>soundlib</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\soundlib\Load_dbm.cpp">
       <Filter>soundlib</Filter>
     </ClCompile>
@@ -1239,6 +1278,9 @@
       <Filter>soundlib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\soundlib\Load_dtm.cpp">
+      <Filter>soundlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\soundlib\Load_etx.cpp">
       <Filter>soundlib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\soundlib\Load_far.cpp">
@@ -1546,6 +1588,9 @@
     </ClCompile>
     <ClCompile Include="..\..\soundlib\tuningCollection.cpp">
       <Filter>soundlib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\openmpt\soundfile_write\wav_write.cpp">
+      <Filter>src\openmpt\soundfile_write</Filter>
     </ClCompile>
     <ClCompile Include="..\..\test\PlaybackTest.cpp">
       <Filter>test</Filter>

@@ -406,8 +406,8 @@ bool CSoundFile::ReadAMS(FileReader &file, ModLoadingFlags loadFlags)
 	m_nSamples = fileHeader.numSamps;
 	SetupMODPanning(true);
 
-	m_modFormat.formatName = U_("Extreme's Tracker");
-	m_modFormat.type = U_("ams");
+	m_modFormat.formatName = UL_("Extreme's Tracker");
+	m_modFormat.type = UL_("ams");
 	m_modFormat.madeWithTracker = MPT_UFORMAT("Extreme's Tracker {}.{}")(fileHeader.versionHigh, fileHeader.versionLow);
 	m_modFormat.charset = mpt::Charset::CP437;
 
@@ -779,8 +779,8 @@ bool CSoundFile::ReadAMS2(FileReader &file, ModLoadingFlags loadFlags)
 	m_nInstruments = fileHeader.numIns;
 	SetupMODPanning(true);
 
-	m_modFormat.formatName = U_("Velvet Studio");
-	m_modFormat.type = U_("ams");
+	m_modFormat.formatName = UL_("Velvet Studio");
+	m_modFormat.type = UL_("ams");
 	m_modFormat.madeWithTracker = MPT_UFORMAT("Velvet Studio {}.{}")(fileHeader.versionHigh.get(), mpt::ufmt::dec0<2>(fileHeader.versionLow.get()));
 	m_modFormat.charset = mpt::Charset::CP437;
 
@@ -823,12 +823,12 @@ bool CSoundFile::ReadAMS2(FileReader &file, ModLoadingFlags loadFlags)
 		}
 
 		uint8 numSamples = file.ReadUint8();
-		uint8 sampleAssignment[120];
-		MemsetZero(sampleAssignment);  // Only really needed for v2.0, where the lowest and highest octave aren't cleared.
+		std::array<uint8, 120> sampleAssignment;
+		sampleAssignment.fill(0);  // Only really needed for v2.0, where the lowest and highest octave aren't cleared.
 
 		if(numSamples == 0
 			|| (fileHeader.versionLow > 0 && !file.ReadArray(sampleAssignment))  // v2.01+: 120 Notes
-			|| (fileHeader.versionLow == 0 && !file.ReadRaw(mpt::span(sampleAssignment + 12, 96)).size()))  // v2.0: 96 Notes
+			|| (fileHeader.versionLow == 0 && !file.ReadRaw(mpt::as_span(sampleAssignment).subspan(12, 96)).size()))  // v2.0: 96 Notes
 		{
 			continue;
 		}
@@ -875,18 +875,17 @@ bool CSoundFile::ReadAMS2(FileReader &file, ModLoadingFlags loadFlags)
 		// Sample headers - we will have to read them even for shadow samples, and we will have to load them several times,
 		// as it is possible that shadow samples use different sample settings like base frequency or panning.
 		const SAMPLEINDEX firstSmp = GetNumSamples() + 1;
+		std::string sampleName;
 		for(SAMPLEINDEX smp = 0; smp < numSamples; smp++)
 		{
-			if(firstSmp + smp >= MAX_SAMPLES)
-			{
-				file.Skip(sizeof(AMS2SampleHeader));
-				break;
-			}
-			file.ReadSizedString<uint8le, mpt::String::spacePadded>(m_szNames[firstSmp + smp]);
-
+			file.ReadSizedString<uint8le, mpt::String::spacePadded>(sampleName);
 			AMS2SampleHeader sampleHeader;
 			file.ReadStruct(sampleHeader);
+			if(firstSmp + smp >= MAX_SAMPLES)
+				continue;
+
 			sampleHeader.ConvertToMPT(Samples[firstSmp + smp]);
+			m_szNames[firstSmp + smp] = sampleName;
 
 			uint16 settings = (instrHeader.shadowInstr & instrIndexMask)
 				| ((smp << sampleIndexShift) & sampleIndexMask)

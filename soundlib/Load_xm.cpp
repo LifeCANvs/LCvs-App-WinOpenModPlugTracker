@@ -480,6 +480,13 @@ static bool ReadSampleData(ModSample &sample, SampleIO sampleFlags, FileReader &
 						{
 							decodedSamples = ret;
 							LimitMax(decodedSamples, mpt::saturate_cast<long>(sample.nLength - offset));
+							if(offset == 0 && channels == 1 && sample.GetNumChannels() == 2)
+							{
+								// oggmod doesn't know what stereo samples are, so it treats them as mono samples, but doesn't clear the unknown stereo flag.
+								// We just take the left channel in this case, as it is difficult (if possible at all) to properly reconstruct the waveform of the right channel.
+								// Due to XM's delta-encoding and Vorbis being a lossless codec, samples could distort easily even when the delta encoding was off by a very small amount.
+								sample.uFlags.reset(CHN_STEREO);
+							}
 							if(decodedSamples > 0 && channels == sample.GetNumChannels())
 							{
 								if(sample.uFlags[CHN_16BIT])
@@ -662,6 +669,10 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 			// Fix arpeggios in kragle_-_happy_day.xm
 			m_playBehaviour.reset(kFT2Arpeggio);
 			isMadTracker = true;
+			if(memcmp(fileHeader.trackerName + 15, "\0\0\0\0", 4))
+				madeWithTracker = UL_("MadTracker 2 (registered)");
+			else
+				madeWithTracker = UL_("MadTracker 2");
 		} else if(!memcmp(fileHeader.trackerName, "Skale Tracker\0", 14) || !memcmp(fileHeader.trackerName, "Sk@le Tracker\0", 14))
 		{
 			m_playBehaviour.reset(kFT2ST3OffsetOutOfRange);
@@ -718,6 +729,11 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 	// Reading instruments
 	for(INSTRUMENTINDEX instr = 1; instr <= m_nInstruments; instr++)
 	{
+		if(!AllocateInstrument(instr))
+			return false;
+		if(!file.CanRead(4))
+			continue;
+
 		// First, try to read instrument header length...
 		uint32 headerSize = file.ReadUint32LE();
 		if(headerSize == 0)
@@ -738,12 +754,12 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 			{
 				// ModPlug Tracker Alpha
 				m_dwLastSavedWithVersion = MPT_V("1.00.00.A5");
-				madeWithTracker = U_("ModPlug Tracker 1.0 alpha");
+				madeWithTracker = UL_("ModPlug Tracker 1.0 alpha");
 			} else if(instrHeader.size == 263)
 			{
 				// ModPlug Tracker Beta (Beta 1 still behaves like Alpha, but Beta 3.3 does it this way)
 				m_dwLastSavedWithVersion = MPT_V("1.00.00.B3");
-				madeWithTracker = U_("ModPlug Tracker 1.0 beta");
+				madeWithTracker = UL_("ModPlug Tracker 1.0 beta");
 			} else
 			{
 				// WTF?
@@ -778,11 +794,6 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 					madeWith = verPlayerPRO | verConfirmed;
 				lastSampleHeaderSize = instrHeader.sampleHeaderSize;
 			}
-		}
-
-		if(AllocateInstrument(instr) == nullptr)
-		{
-			continue;
 		}
 
 		instrHeader.ConvertToMPT(*Instruments[instr]);
@@ -999,18 +1010,18 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 		if(madeWith[verModPlugBidiFlag])
 		{
 			m_dwLastSavedWithVersion = MPT_V("1.11");
-			madeWithTracker = U_("ModPlug Tracker 1.0 - 1.11");
+			madeWithTracker = UL_("ModPlug Tracker 1.0 - 1.11");
 		} else if(madeWith[verNewModPlug] && !madeWith[verPlayerPRO])
 		{
 			m_dwLastSavedWithVersion = MPT_V("1.16");
-			madeWithTracker = U_("ModPlug Tracker 1.0 - 1.16");
+			madeWithTracker = UL_("ModPlug Tracker 1.0 - 1.16");
 		} else if(madeWith[verNewModPlug] && madeWith[verPlayerPRO])
 		{
 			m_dwLastSavedWithVersion = MPT_V("1.16");
-			madeWithTracker = U_("ModPlug Tracker 1.0 - 1.16 / PlayerPRO");
+			madeWithTracker = UL_("ModPlug Tracker 1.0 - 1.16 / PlayerPRO");
 		} else if(!madeWith[verNewModPlug] && madeWith[verPlayerPRO])
 		{
-			madeWithTracker = U_("PlayerPRO");
+			madeWithTracker = UL_("PlayerPRO");
 		}
 	}
 
@@ -1059,13 +1070,13 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 	{
 		if(madeWith[verDigiTrakker] && sampleReserved == 0 && (lastInstrType ? lastInstrType : -1) == -1)
 		{
-			madeWithTracker = U_("DigiTrakker");
+			madeWithTracker = UL_("DigiTrakker");
 		} else if(madeWith[verFT2Generic])
 		{
-			madeWithTracker = U_("FastTracker 2 or compatible");
+			madeWithTracker = UL_("FastTracker 2 or compatible");
 		} else
 		{
-			madeWithTracker = U_("Unknown");
+			madeWithTracker = UL_("Unknown");
 		}
 	}
 
@@ -1086,7 +1097,7 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 
 	if(m_dwLastSavedWithVersion >= MPT_V("1.17"))
 	{
-		madeWithTracker = U_("OpenMPT ") + m_dwLastSavedWithVersion.ToUString();
+		madeWithTracker = UL_("OpenMPT ") + m_dwLastSavedWithVersion.ToUString();
 	}
 
 	// We no longer allow any --- or +++ items in the order list now.
@@ -1104,16 +1115,16 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 	if(isOXM)
 	{
 		m_modFormat.originalFormatName = std::move(m_modFormat.formatName);
-		m_modFormat.formatName = U_("OggMod FastTracker 2");
-		m_modFormat.type = U_("oxm");
-		m_modFormat.originalType = U_("xm");
+		m_modFormat.formatName = UL_("OggMod FastTracker 2");
+		m_modFormat.type = UL_("oxm");
+		m_modFormat.originalType = UL_("xm");
 	} else
 	{
-		m_modFormat.type = U_("xm");
+		m_modFormat.type = UL_("xm");
 	}
 
 	if(anyADPCM)
-		m_modFormat.madeWithTracker += U_(" (ADPCM packed)");
+		m_modFormat.madeWithTracker += UL_(" (ADPCM packed)");
 
 	return true;
 }
@@ -1122,8 +1133,8 @@ bool CSoundFile::ReadXM(FileReader &file, ModLoadingFlags loadFlags)
 #ifndef MODPLUG_NO_FILESAVE
 
 
-#if MPT_GCC_AT_LEAST(13, 0, 0) && MPT_GCC_BEFORE(14, 1, 0)
-// work-around massively confused GCC 13 optimizer:
+#if MPT_GCC_AT_LEAST(13, 0, 0) && MPT_GCC_BEFORE(15, 1, 0)
+// work-around massively confused GCC 13/14 optimizer:
 // /usr/include/c++/13/bits/stl_algobase.h:437:30: warning: 'void* __builtin_memcpy(void*, const void*, long unsigned int)' writing between 3 and 9223372036854775806 bytes into a region of size 0 overflows the destination [-Wstringop-overflow=]
 template <typename Tcont2, typename Tcont1>
 static MPT_NOINLINE Tcont1 & gcc_append(Tcont1 & cont1, const Tcont2 & cont2) {
@@ -1404,7 +1415,7 @@ bool CSoundFile::SaveXM(std::ostream &f, bool compatibilityExport)
 					}
 				}
 
-#if MPT_GCC_AT_LEAST(13, 0, 0) && MPT_GCC_BEFORE(14, 1, 0)
+#if MPT_GCC_AT_LEAST(13, 0, 0) && MPT_GCC_BEFORE(15, 1, 0)
 				gcc_append(samples, additionalSamples);
 #else
 				mpt::append(samples, additionalSamples);

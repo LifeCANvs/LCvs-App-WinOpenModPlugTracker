@@ -129,6 +129,12 @@ namespace IPCWindow
 		ipcWindow = nullptr;
 	}
 
+	void UpdateLastUsed()
+	{
+		if(ipcWindow)
+			SetWindowLongPtr(ipcWindow, GWLP_USERDATA, mpt::saturate_cast<LONG_PTR>(Util::GetTickCount64() / 100));
+	}
+
 	LRESULT SendIPC(HWND ipcWnd, Function function, mpt::const_byte_span data)
 	{
 		if(!ipcWnd)
@@ -146,20 +152,16 @@ namespace IPCWindow
 		return ::SendMessage(ipcWnd, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&copyData));
 	}
 
-	HWND FindIPCWindow()
-	{
-		return ::FindWindow(ClassName, nullptr);
-	}
-
 	struct EnumWindowState
 	{
-		FlagSet<InstanceRequirements> require;
+		uintptr_t lastActive = 0;
 		HWND result = nullptr;
+		FlagSet<InstanceRequirements> require;
 	};
 
 	static BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
 	{
-		EnumWindowState &state = *reinterpret_cast<EnumWindowState*>(lParam);
+		EnumWindowState &state = *reinterpret_cast<EnumWindowState *>(lParam);
 		if(hwnd)
 		{
 			TCHAR className[256];
@@ -196,9 +198,13 @@ namespace IPCWindow
 							return TRUE; // continue
 						}
 					}
-					state.result = hwnd;
+					uintptr_t lastActive = GetWindowLongPtr(hwnd, GWLP_USERDATA);
+					if(!state.result || lastActive >= state.lastActive)
+					{
+						state.result = hwnd;
+						state.lastActive = lastActive;
+					}
 					return TRUE; // continue
-					//return FALSE; // done
 				}
 			}
 		}
@@ -215,8 +221,6 @@ namespace IPCWindow
 		}
 		return state.result;
 	}
-
-
 
 	bool SendToIPC(const std::vector<mpt::PathString> &filenames, bool autoplay)
 	{

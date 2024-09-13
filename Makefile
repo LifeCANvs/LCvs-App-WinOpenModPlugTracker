@@ -66,6 +66,7 @@
 #  ONLY_TEST=0         Only build the test suite.
 #  STRICT=0            Treat warnings as errors.
 #  MODERN=0            Pass more modern compiler options.
+#  ANCIENT=0           Pass compiler options compatible with older versions.
 #  NATIVE=0            Optimize for system CPU.
 #  STDCXX=c++17        C++ standard version (default depends on compiler)
 #  STDC=c17            C standard version (default depends on compiler)
@@ -585,32 +586,10 @@ endif
 
 endif
 
-ifeq ($(OPTIMIZE_FASTMATH),2)
-CPPFLAGS += -DMPT_CHECK_CXX_IGNORE_WARNING_FASTMATH -DMPT_CHECK_CXX_IGNORE_WARNING_FINITEMATH
-CXXFLAGS += -ffast-math
-CFLAGS   += -ffast-math
-else ifeq ($(OPTIMIZE_FASTMATH),1)
-CPPFLAGS += -DMPT_CHECK_CXX_IGNORE_WARNING_FINITEMATH
-CXXFLAGS += -fassociative-math
-CXXFLAGS += -fcx-limited-range
-CXXFLAGS += -fexcess-precision=fast
-CXXFLAGS += -ffinite-math-only
-CXXFLAGS += -freciprocal-math
-CXXFLAGS += -fno-math-errno
-CXXFLAGS += -fno-rounding-math
-CXXFLAGS += -fno-signaling-nans
-CXXFLAGS += -fno-signed-zeros
-CXXFLAGS += -fno-trapping-math
-CFLAGS += -fassociative-math
-CFLAGS += -fcx-limited-range
-CFLAGS += -fexcess-precision=fast
-CFLAGS += -ffinite-math-only
-CFLAGS += -freciprocal-math
-CFLAGS += -fno-math-errno
-CFLAGS += -fno-rounding-math
-CFLAGS += -fno-signaling-nans
-CFLAGS += -fno-signed-zeros
-CFLAGS += -fno-trapping-math
+ifeq ($(MPT_COMPILER_NOIPARA),1)
+# See <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=115049>.
+CXXFLAGS += -fno-ipa-ra
+CFLAGS   += -fno-ipa-ra
 endif
 
 ifeq ($(CHECKED),1)
@@ -668,24 +647,28 @@ CPPFLAGS_ZLIB := -DMPT_WITH_ZLIB
 LDFLAGS_ZLIB  :=
 LDLIBS_ZLIB   :=
 CPPFLAGS_ZLIB += -Iinclude/zlib/
-LOCAL_ZLIB_SOURCES := 
-LOCAL_ZLIB_SOURCES += include/zlib/adler32.c
-LOCAL_ZLIB_SOURCES += include/zlib/compress.c
-LOCAL_ZLIB_SOURCES += include/zlib/crc32.c
-LOCAL_ZLIB_SOURCES += include/zlib/deflate.c
-LOCAL_ZLIB_SOURCES += include/zlib/gzclose.c
-LOCAL_ZLIB_SOURCES += include/zlib/gzlib.c
-LOCAL_ZLIB_SOURCES += include/zlib/gzread.c
-LOCAL_ZLIB_SOURCES += include/zlib/gzwrite.c
-LOCAL_ZLIB_SOURCES += include/zlib/infback.c
-LOCAL_ZLIB_SOURCES += include/zlib/inffast.c
-LOCAL_ZLIB_SOURCES += include/zlib/inflate.c
-LOCAL_ZLIB_SOURCES += include/zlib/inftrees.c
-LOCAL_ZLIB_SOURCES += include/zlib/trees.c
-LOCAL_ZLIB_SOURCES += include/zlib/uncompr.c
-LOCAL_ZLIB_SOURCES += include/zlib/zutil.c
-include/zlib/%$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DSTDC -DZ_HAVE_UNISTD_H
-include/zlib/%.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DSTDC -DZ_HAVE_UNISTD_H
+ZLIB_SOURCES := 
+ZLIB_SOURCES += include/zlib/adler32.c
+ZLIB_SOURCES += include/zlib/compress.c
+ZLIB_SOURCES += include/zlib/crc32.c
+ZLIB_SOURCES += include/zlib/deflate.c
+ZLIB_SOURCES += include/zlib/gzclose.c
+ZLIB_SOURCES += include/zlib/gzlib.c
+ZLIB_SOURCES += include/zlib/gzread.c
+ZLIB_SOURCES += include/zlib/gzwrite.c
+ZLIB_SOURCES += include/zlib/infback.c
+ZLIB_SOURCES += include/zlib/inffast.c
+ZLIB_SOURCES += include/zlib/inflate.c
+ZLIB_SOURCES += include/zlib/inftrees.c
+ZLIB_SOURCES += include/zlib/trees.c
+ZLIB_SOURCES += include/zlib/uncompr.c
+ZLIB_SOURCES += include/zlib/zutil.c
+include/zlib/%.zlib$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DSTDC -DZ_HAVE_UNISTD_H
+ZLIB_OBJECTS = $(ZLIB_SOURCES:.c=.zlib$(FLAVOUR_O).o)
+ZLIB_DEPENDS = $(ZLIB_OBJECTS:$(FLAVOUR_O).o=$(FLAVOUR_O).d)
+ALL_OBJECTS += $(ZLIB_OBJECTS)
+ALL_DEPENDS += $(ZLIB_DEPENDS)
+OBJECTS_ZLIB = $(ZLIB_OBJECTS)
 else
 ifeq ($(NO_ZLIB),1)
 else
@@ -741,24 +724,15 @@ MPG123_SOURCES += include/mpg123/src/libmpg123/synth_8bit.c
 MPG123_SOURCES += include/mpg123/src/libmpg123/synth_real.c
 MPG123_SOURCES += include/mpg123/src/libmpg123/synth_s32.c
 MPG123_SOURCES += include/mpg123/src/libmpg123/tabinit.c
-MPG123_OBJECTS += $(MPG123_SOURCES:.c=$(FLAVOUR_O).o)
+MPG123_OBJECTS += $(MPG123_SOURCES:.c=.mpg123$(FLAVOUR_O).o)
 MPG123_DEPENDS = $(MPG123_OBJECTS:$(FLAVOUR_O).o=$(FLAVOUR_O).d)
 ALL_OBJECTS += $(MPG123_OBJECTS)
 ALL_DEPENDS += $(MPG123_DEPENDS)
-include/mpg123/src/compat/%$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/compat/%.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/libmpg123/%$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/libmpg123/%.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/compat/%$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
-include/mpg123/src/compat/%.test$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
-include/mpg123/src/libmpg123/%$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
-include/mpg123/src/libmpg123/%.test$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
-LOCAL_MPG123_SOURCES :=
-LOCAL_MPG123_SOURCES +=
-LOCAL_MPG123_OBJECTS :=
-LOCAL_MPG123_OBJECTS +=
-LOCAL_MPG123_LIBS :=
-LOCAL_MPG123_LIBS += bin/$(FLAVOUR_DIR)mpg123.a
+include/mpg123/src/compat/%.mpg123$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
+include/mpg123/src/libmpg123/%.mpg123$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
+include/mpg123/src/compat/%.mpg123$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
+include/mpg123/src/libmpg123/%.mpg123$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
+LIBS_MPG123 = bin/$(FLAVOUR_DIR)mpg123.a
 
 bin/$(FLAVOUR_DIR)mpg123.a: $(MPG123_OBJECTS)
 	$(INFO) [DXE] $@
@@ -778,41 +752,42 @@ CPPFLAGS_MPG123 := -DMPT_WITH_MPG123 -DMPG123_NO_LARGENAME
 LDFLAGS_MPG123  :=
 LDLIBS_MPG123   := 
 CPPFLAGS_MPG123 += -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/
-LOCAL_MPG123_SOURCES := 
-LOCAL_MPG123_SOURCES += include/mpg123/src/compat/compat.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/compat/compat_str.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/dct64.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/equalizer.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/feature.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/format.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/frame.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/icy.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/icy2utf8.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/id3.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/index.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/layer1.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/layer2.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/layer3.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/lfs_wrap.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/libmpg123.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/ntom.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/optimize.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/parse.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/readers.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/stringbuf.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/synth.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/synth_8bit.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/synth_real.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/synth_s32.c
-LOCAL_MPG123_SOURCES += include/mpg123/src/libmpg123/tabinit.c
-include/mpg123/src/compat/%$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/compat/%.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/libmpg123/%$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/libmpg123/%.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
-include/mpg123/src/compat/%$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
-include/mpg123/src/compat/%.test$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
-include/mpg123/src/libmpg123/%$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
-include/mpg123/src/libmpg123/%.test$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
+MPG123_SOURCES := 
+MPG123_SOURCES += include/mpg123/src/compat/compat.c
+MPG123_SOURCES += include/mpg123/src/compat/compat_str.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/dct64.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/equalizer.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/feature.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/format.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/frame.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/icy.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/icy2utf8.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/id3.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/index.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/layer1.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/layer2.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/layer3.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/lfs_wrap.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/libmpg123.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/ntom.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/optimize.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/parse.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/readers.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/stringbuf.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/synth.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/synth_8bit.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/synth_real.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/synth_s32.c
+MPG123_SOURCES += include/mpg123/src/libmpg123/tabinit.c
+include/mpg123/src/compat/%.mpg123$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
+include/mpg123/src/libmpg123/%.mpg123$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT) -DOPT_GENERIC
+include/mpg123/src/compat/%.mpg123$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
+include/mpg123/src/libmpg123/%.mpg123$(FLAVOUR_O).o : CPPFLAGS:= -Iinclude/mpg123/src/include/ -Iinclude/mpg123/ports/makefile/ $(CPPFLAGS)
+MPG123_OBJECTS = $(MPG123_SOURCES:.c=.mpg123$(FLAVOUR_O).o)
+MPG123_DEPENDS = $(MPG123_OBJECTS:$(FLAVOUR_O).o=$(FLAVOUR_O).d)
+ALL_OBJECTS += $(MPG123_OBJECTS)
+ALL_DEPENDS += $(MPG123_DEPENDS)
+OBJECTS_MPG123 = $(MPG123_OBJECTS)
 
 endif
 
@@ -841,11 +816,15 @@ CPPFLAGS_OGG := -DMPT_WITH_OGG
 LDFLAGS_OGG  := 
 LDLIBS_OGG   := 
 CPPFLAGS_OGG += -Iinclude/ogg/include/ -Iinclude/ogg/ports/makefile/
-LOCAL_OGG_SOURCES := 
-LOCAL_OGG_SOURCES += include/ogg/src/bitwise.c
-LOCAL_OGG_SOURCES += include/ogg/src/framing.c
-include/ogg/src/%$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
-include/ogg/src/%.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
+OGG_SOURCES := 
+OGG_SOURCES += include/ogg/src/bitwise.c
+OGG_SOURCES += include/ogg/src/framing.c
+include/ogg/src/%.ogg$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
+OGG_OBJECTS += $(OGG_SOURCES:.c=.ogg$(FLAVOUR_O).o)
+OGG_DEPENDS = $(OGG_OBJECTS:$(FLAVOUR_O).o=$(FLAVOUR_O).d)
+ALL_OBJECTS += $(OGG_OBJECTS)
+ALL_DEPENDS += $(OGG_DEPENDS)
+OBJECTS_OGG = $(OGG_OBJECTS)
 else
 ifeq ($(NO_OGG),1)
 else
@@ -874,31 +853,35 @@ CPPFLAGS_VORBIS += -Iinclude/vorbis/include/ -Iinclude/vorbis/lib/
 ifneq ($(MPT_COMPILER_NOALLOCAH),1)
 CPPFLAGS_VORBIS += -DHAVE_ALLOCA_H
 endif
-LOCAL_VORBIS_SOURCES := 
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/analysis.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/bitrate.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/block.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/codebook.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/envelope.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/floor0.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/floor1.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/info.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/lookup.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/lpc.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/lsp.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/mapping0.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/mdct.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/psy.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/registry.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/res0.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/sharedbook.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/smallft.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/synthesis.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/vorbisenc.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/vorbisfile.c
-LOCAL_VORBIS_SOURCES += include/vorbis/lib/window.c
-include/vorbis/lib/%$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
-include/vorbis/lib/%.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
+VORBIS_SOURCES := 
+VORBIS_SOURCES += include/vorbis/lib/analysis.c
+VORBIS_SOURCES += include/vorbis/lib/bitrate.c
+VORBIS_SOURCES += include/vorbis/lib/block.c
+VORBIS_SOURCES += include/vorbis/lib/codebook.c
+VORBIS_SOURCES += include/vorbis/lib/envelope.c
+VORBIS_SOURCES += include/vorbis/lib/floor0.c
+VORBIS_SOURCES += include/vorbis/lib/floor1.c
+VORBIS_SOURCES += include/vorbis/lib/info.c
+VORBIS_SOURCES += include/vorbis/lib/lookup.c
+VORBIS_SOURCES += include/vorbis/lib/lpc.c
+VORBIS_SOURCES += include/vorbis/lib/lsp.c
+VORBIS_SOURCES += include/vorbis/lib/mapping0.c
+VORBIS_SOURCES += include/vorbis/lib/mdct.c
+VORBIS_SOURCES += include/vorbis/lib/psy.c
+VORBIS_SOURCES += include/vorbis/lib/registry.c
+VORBIS_SOURCES += include/vorbis/lib/res0.c
+VORBIS_SOURCES += include/vorbis/lib/sharedbook.c
+VORBIS_SOURCES += include/vorbis/lib/smallft.c
+VORBIS_SOURCES += include/vorbis/lib/synthesis.c
+VORBIS_SOURCES += include/vorbis/lib/vorbisenc.c
+VORBIS_SOURCES += include/vorbis/lib/vorbisfile.c
+VORBIS_SOURCES += include/vorbis/lib/window.c
+include/vorbis/lib/%.vorbis$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
+VORBIS_OBJECTS += $(VORBIS_SOURCES:.c=.vorbis$(FLAVOUR_O).o)
+VORBIS_DEPENDS = $(VORBIS_OBJECTS:$(FLAVOUR_O).o=$(FLAVOUR_O).d)
+ALL_OBJECTS += $(VORBIS_OBJECTS)
+ALL_DEPENDS += $(VORBIS_DEPENDS)
+OBJECTS_VORBIS = $(VORBIS_OBJECTS)
 else
 ifeq ($(NO_VORBIS),1)
 else
@@ -1066,7 +1049,22 @@ CPPFLAGS += -DMPT_BUILD_HACK_ARCHIVE_SUPPORT
 endif
 
 CPPCHECK_FLAGS += -j $(NUMTHREADS)
-CPPCHECK_FLAGS += --std=c11 --std=c++17
+ifneq ($(STDC),)
+CPPCHECK_FLAGS += --std=$(STDC)
+else
+#CPPCHECK_FLAGS += --std=c23
+#CPPCHECK_FLAGS += --std=c18
+#CPPCHECK_FLAGS += --std=c17
+CPPCHECK_FLAGS += --std=c11
+endif
+ifneq ($(STDCXX),)
+CPPCHECK_FLAGS += --std=$(STDCXX)
+else
+#CPPCHECK_FLAGS += --std=c++23
+#CPPCHECK_FLAGS += --std=c++20
+CPPCHECK_FLAGS += --std=c++17
+endif
+CPPCHECK_FLAGS += --library=build/cppcheck/glibc-workarounds.cfg
 CPPCHECK_FLAGS += --quiet
 CPPCHECK_FLAGS += --enable=warning --inline-suppr --template='{file}:{line}: warning: {severity}: {message} [{id}]'
 CPPCHECK_FLAGS += --check-level=exhaustive
@@ -1098,14 +1096,66 @@ LDLIBS_OPENMPT123   += $(LDLIBS_SDL2) $(LDLIBS_PORTAUDIO) $(LDLIBS_PULSEAUDIO) $
 	$(SILENT)$(COMPILE.c) $(OUTPUT_OPTION) $<
 
 %.test$(FLAVOUR_O).o: %.cpp
-	$(INFO) [CXX-TEST] $<
+	$(INFO) [CXX] libopenmpt-test: $<
 	$(VERYSILENT)$(CXX) -DLIBOPENMPT_BUILD_TEST $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.test$(FLAVOUR_O).d
 	$(SILENT)$(COMPILE.cc) -DLIBOPENMPT_BUILD_TEST $(OUTPUT_OPTION) $<
 
 %.test$(FLAVOUR_O).o: %.c
-	$(INFO) [CC-TEST] $<
+	$(INFO) [CC] libopenmpt-test: $<
 	$(VERYSILENT)$(CC) -DLIBOPENMPT_BUILD_TEST $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.test$(FLAVOUR_O).d
 	$(SILENT)$(COMPILE.c) -DLIBOPENMPT_BUILD_TEST $(OUTPUT_OPTION) $<
+
+%.openmpt123$(FLAVOUR_O).o: %.cpp
+	$(INFO) [CXX] openmpt123: $<
+	$(VERYSILENT)$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(CPPFLAGS_OPENMPT123) $(TARGET_ARCH) -M -MT$@ $< > $*.openmpt123$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.cc) $(CPPFLAGS_OPENMPT123) $(OUTPUT_OPTION) $<
+
+%.openmpt123$(FLAVOUR_O).o: %.c
+	$(INFO) [CC] openmpt123: $<
+	$(VERYSILENT)$(CC) $(CFLAGS) $(CPPFLAGS) $(CPPFLAGS_OPENMPT123) $(TARGET_ARCH) -M -MT$@ $< > $*.openmpt123$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.c) $(CPPFLAGS_OPENMPT123) $(OUTPUT_OPTION) $<
+
+
+%.zlib$(FLAVOUR_O).o: %.cpp
+	$(INFO) [CXX] zlib: $<
+	$(VERYSILENT)$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.zlib$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+%.zlib$(FLAVOUR_O).o: %.c
+	$(INFO) [CC] zlib: $<
+	$(VERYSILENT)$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.zlib$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.c) $(OUTPUT_OPTION) $<
+
+%.mpg123$(FLAVOUR_O).o: %.cpp
+	$(INFO) [CXX] mpg123: $<
+	$(VERYSILENT)$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.mpg123$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+%.mpg123$(FLAVOUR_O).o: %.c
+	$(INFO) [CC] mpg123: $<
+	$(VERYSILENT)$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.mpg123$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.c) $(OUTPUT_OPTION) $<
+
+%.ogg$(FLAVOUR_O).o: %.cpp
+	$(INFO) [CXX] ogg: $<
+	$(VERYSILENT)$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.ogg$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+%.ogg$(FLAVOUR_O).o: %.c
+	$(INFO) [CC] ogg: $<
+	$(VERYSILENT)$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.ogg$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.c) $(OUTPUT_OPTION) $<
+
+%.vorbis$(FLAVOUR_O).o: %.cpp
+	$(INFO) [CXX] vorbis: $<
+	$(VERYSILENT)$(CXX) $(CXXFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.vorbis$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.cc) $(OUTPUT_OPTION) $<
+
+%.vorbis$(FLAVOUR_O).o: %.c
+	$(INFO) [CC] vorbis: $<
+	$(VERYSILENT)$(CC) $(CFLAGS) $(CPPFLAGS) $(TARGET_ARCH) -M -MT$@ $< > $*.vorbis$(FLAVOUR_O).d
+	$(SILENT)$(COMPILE.c) $(OUTPUT_OPTION) $<
+
 
 %.tar.gz: %.tar
 	$(INFO) [GZIP] $<
@@ -1175,15 +1225,24 @@ CPPFLAGS += -DLIBOPENMPT_BUILD
 
 
 COMMON_CXX_SOURCES += \
+ $(sort $(wildcard src/openmpt/all/*.cpp)) \
+ $(sort $(wildcard src/openmpt/base/*.cpp)) \
+ $(sort $(wildcard src/openmpt/logging/*.cpp)) \
+ $(sort $(wildcard src/openmpt/random/*.cpp)) \
  $(sort $(wildcard common/*.cpp)) \
- $(sort $(wildcard src/mpt/src/*.cpp)) \
  
 SOUNDLIB_CXX_SOURCES += \
  $(COMMON_CXX_SOURCES) \
+ $(sort $(wildcard src/openmpt/fileformat_base/*.cpp)) \
+ $(sort $(wildcard src/openmpt/soundbase/*.cpp)) \
+ $(sort $(wildcard src/openmpt/soundfile_data/*.cpp)) \
  $(sort $(wildcard soundlib/*.cpp)) \
  $(sort $(wildcard soundlib/plugins/*.cpp)) \
  $(sort $(wildcard soundlib/plugins/dmo/*.cpp)) \
  $(sort $(wildcard sounddsp/*.cpp)) \
+ 
+SOUNDLIB_TEST_CXX_SOURCES += \
+ $(sort $(wildcard src/openmpt/soundfile_write/*.cpp)) \
  
 
 ifeq ($(HACK_ARCHIVE_SUPPORT),1)
@@ -1194,12 +1253,12 @@ LIBOPENMPT_CXX_SOURCES += \
  $(SOUNDLIB_CXX_SOURCES) \
  $(sort $(wildcard libopenmpt/*.cpp)) \
  
+
 include/miniz/miniz$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
 include/miniz/miniz.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
 ifeq ($(LOCAL_ZLIB),1)
-LIBOPENMPT_C_SOURCES += $(LOCAL_ZLIB_SOURCES)
-LIBOPENMPTTEST_C_SOURCES += $(LOCAL_ZLIB_SOURCES)
-LIBOPENMPT_OBJECTS += $(LOCAL_ZLIB_OBJECTS)
+LIBOPENMPT_OBJECTS += $(OBJECTS_ZLIB)
+LIBOPENMPTTEST_OBJECTS += $(OBJECTS_ZLIB)
 else
 ifeq ($(NO_ZLIB),1)
 ifeq ($(NO_MINIZ),1)
@@ -1215,10 +1274,10 @@ endif
 include/minimp3/minimp3$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
 include/minimp3/minimp3.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
 ifeq ($(LOCAL_MPG123),1)
-LIBOPENMPT_C_SOURCES += $(LOCAL_MPG123_SOURCES)
-LIBOPENMPTTEST_C_SOURCES += $(LOCAL_MPG123_SOURCES)
-LIBOPENMPT_OBJECTS += $(LOCAL_MPG123_OBJECTS)
-LIBOPENMPT_LIBS += $(LOCAL_MPG123_LIBS)
+LIBOPENMPT_OBJECTS += $(OBJECTS_MPG123)
+LIBOPENMPTTEST_OBJECTS += $(OBJECTS_MPG123)
+LIBOPENMPT_LIBS += $(LIBS_MPG123)
+LIBOPENMPTTEST_LIBS += $(LIBS_MPG123)
 else
 ifeq ($(NO_MPG123),1)
 ifeq ($(NO_MINIMP3),1)
@@ -1235,13 +1294,15 @@ include/stb_vorbis/stb_vorbis$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
 include/stb_vorbis/stb_vorbis.test$(FLAVOUR_O).o : CFLAGS+=$(CFLAGS_SILENT)
 ifeq ($(LOCAL_VORBIS),1)
 ifeq ($(LOCAL_OGG),1)
-LIBOPENMPT_C_SOURCES += $(LOCAL_OGG_SOURCES)
-LIBOPENMPTTEST_C_SOURCES += $(LOCAL_OGG_SOURCES)
-LIBOPENMPT_OBJECTS += $(LOCAL_OGG_OBJECTS)
+LIBOPENMPT_OBJECTS += $(OBJECTS_OGG)
+LIBOPENMPTTEST_OBJECTS += $(OBJECTS_OGG)
+LIBOPENMPT_LIBS += $(LIBS_OGG)
+LIBOPENMPTTEST_LIBS += $(LIBS_OGG)
 endif
-LIBOPENMPT_C_SOURCES += $(LOCAL_VORBIS_SOURCES)
-LIBOPENMPTTEST_C_SOURCES += $(LOCAL_VORBIS_SOURCES)
-LIBOPENMPT_OBJECTS += $(LOCAL_VORBIS_OBJECTS)
+LIBOPENMPT_OBJECTS += $(OBJECTS_VORBIS)
+LIBOPENMPTTEST_OBJECTS += $(OBJECTS_VORBIS)
+LIBOPENMPT_LIBS += $(LIBS_VORBIS)
+LIBOPENMPTTEST_LIBS += $(LIBS_VORBIS)
 else
 ifeq ($(NO_OGG),1)
 ifeq ($(NO_STBVORBIS),1)
@@ -1316,7 +1377,7 @@ OPENMPT123_CXX_SOURCES += \
 OPENMPT123_C_SOURCES += \
  $(sort $(wildcard openmpt123/*.c)) \
  
-OPENMPT123_OBJECTS += $(OPENMPT123_CXX_SOURCES:.cpp=$(FLAVOUR_O).o) $(OPENMPT123_C_SOURCES:.c=$(FLAVOUR_O).o)
+OPENMPT123_OBJECTS += $(OPENMPT123_CXX_SOURCES:.cpp=.openmpt123$(FLAVOUR_O).o) $(OPENMPT123_C_SOURCES:.c=.openmpt123$(FLAVOUR_O).o)
 OPENMPT123_DEPENDS = $(OPENMPT123_OBJECTS:$(FLAVOUR_O).o=$(FLAVOUR_O).d)
 ALL_OBJECTS += $(OPENMPT123_OBJECTS)
 ALL_DEPENDS += $(OPENMPT123_DEPENDS)
@@ -1325,6 +1386,7 @@ ALL_DEPENDS += $(OPENMPT123_DEPENDS)
 LIBOPENMPTTEST_CXX_SOURCES += \
  libopenmpt/libopenmpt_test/libopenmpt_test.cpp \
  $(SOUNDLIB_CXX_SOURCES) \
+ $(SOUNDLIB_TEST_CXX_SOURCES) \
  test/mpt_tests_base.cpp \
  test/mpt_tests_binary.cpp \
  test/mpt_tests_crc.cpp \
@@ -1344,8 +1406,8 @@ LIBOPENMPTTEST_CXX_SOURCES += \
 
 LIBOPENMPTTEST_C_SOURCES += \
  
-LIBOPENMPTTEST_OBJECTS = $(LIBOPENMPTTEST_CXX_SOURCES:.cpp=.test$(FLAVOUR_O).o) $(LIBOPENMPTTEST_C_SOURCES:.c=.test$(FLAVOUR_O).o)
-LIBOPENMPTTEST_DEPENDS = $(LIBOPENMPTTEST_CXX_SOURCES:.cpp=.test$(FLAVOUR_O).d) $(LIBOPENMPTTEST_C_SOURCES:.c=.test$(FLAVOUR_O).d)
+LIBOPENMPTTEST_OBJECTS += $(LIBOPENMPTTEST_CXX_SOURCES:.cpp=.test$(FLAVOUR_O).o) $(LIBOPENMPTTEST_C_SOURCES:.c=.test$(FLAVOUR_O).o)
+LIBOPENMPTTEST_DEPENDS = $(LIBOPENMPTTEST_OBJECTS:$(FLAVOUR_O).o=$(FLAVOUR_O).d)
 ALL_OBJECTS += $(LIBOPENMPTTEST_OBJECTS)
 ALL_DEPENDS += $(LIBOPENMPTTEST_DEPENDS)
 
@@ -1787,9 +1849,12 @@ bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION).makefile.tar: b
 	#svn export ./src/mpt/uuid_namespace bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/mpt/uuid_namespace
 	svn export ./src/openmpt/all        bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/all
 	svn export ./src/openmpt/base       bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/base
+	svn export ./src/openmpt/fileformat_base bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/fileformat_base
 	svn export ./src/openmpt/logging    bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/logging
 	svn export ./src/openmpt/random     bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/random
 	svn export ./src/openmpt/soundbase  bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/soundbase
+	svn export ./src/openmpt/soundfile_data  bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/soundfile_data
+	svn export ./src/openmpt/soundfile_write bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/soundfile_write
 	svn export ./test               bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/test
 	rm bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/test/mpt_tests_crypto.cpp
 	rm bin/$(FLAVOUR_DIR)dist-tar/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/test/mpt_tests_uuid_namespace.cpp
@@ -1829,12 +1894,11 @@ bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION).msvc.zip: bin/$
 	svn export ./build/scriptlib              bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/scriptlib              --native-eol CRLF
 	svn export ./build/svn_version            bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/svn_version            --native-eol CRLF
 	svn export ./build/vs                     bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs                     --native-eol CRLF
+	svn export ./build/vs2017winxpansi        bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2017winxpansi        --native-eol CRLF
 	svn export ./build/vs2017winxp            bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2017winxp            --native-eol CRLF
 	svn export ./build/vs2019win7             bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2019win7             --native-eol CRLF
-	svn export ./build/vs2019win81            bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2019win81            --native-eol CRLF
-	svn export ./build/vs2019win10            bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2019win10            --native-eol CRLF
-	svn export ./build/vs2019win10uwp         bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2019win10uwp         --native-eol CRLF
 	svn export ./build/vs2022win7             bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2022win7             --native-eol CRLF
+	svn export ./build/vs2022win8             bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2022win8             --native-eol CRLF
 	svn export ./build/vs2022win81            bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2022win81            --native-eol CRLF
 	svn export ./build/vs2022win10            bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2022win10            --native-eol CRLF
 	svn export ./build/vs2022win10uwp         bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/build/vs2022win10uwp         --native-eol CRLF
@@ -1885,9 +1949,12 @@ bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION).msvc.zip: bin/$
 	#svn export ./src/mpt/uuid_namespace bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/mpt/uuid_namespace --native-eol CRLF
 	svn export ./src/openmpt/all        bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/all       --native-eol CRLF
 	svn export ./src/openmpt/base       bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/base      --native-eol CRLF
+	svn export ./src/openmpt/fileformat_base bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/fileformat_base --native-eol CRLF
 	svn export ./src/openmpt/logging    bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/logging   --native-eol CRLF
 	svn export ./src/openmpt/random     bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/random    --native-eol CRLF
 	svn export ./src/openmpt/soundbase  bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/soundbase --native-eol CRLF
+	svn export ./src/openmpt/soundfile_data  bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/soundfile_data  --native-eol CRLF
+	svn export ./src/openmpt/soundfile_write bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/src/openmpt/soundfile_write --native-eol CRLF
 	svn export ./test                  bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/test                  --native-eol CRLF
 	rm bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/test/mpt_tests_crypto.cpp
 	rm bin/$(FLAVOUR_DIR)dist-zip/libopenmpt-$(DIST_LIBOPENMPT_VERSION)/test/mpt_tests_uuid_namespace.cpp

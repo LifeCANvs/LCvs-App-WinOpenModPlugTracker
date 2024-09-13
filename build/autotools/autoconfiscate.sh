@@ -11,17 +11,25 @@ set -e
 
 echo "Detecting OS ..."
 UNAME_S="$(uname -s)"
-if [[ $UNAME_S == *"BSD"* ]]; then
- if [[ $UNAME_S == "OpenBSD" ]]; then
+
+case $UNAME_S in
+ Darwin)
+  TAR_FLAVOUR=mac
+  MAKE=make
+  ;;
+ OpenBSD)
   TAR_FLAVOUR=bsd
- else
+  MAKE=gmake
+  ;;
+ *BSD*)
   TAR_FLAVOUR=libarchive
- fi
- MAKE=gmake
-else
- TAR_FLAVOUR=gnu
- MAKE=make
-fi
+  MAKE=gmake
+  ;;
+ *)
+  TAR_FLAVOUR=gnu
+  MAKE=make
+  ;;
+esac
 
 echo "Gathering version ..."
 . libopenmpt/libopenmpt_version.mk
@@ -96,9 +104,12 @@ svn export ./src/mpt/uuid           bin/dist-autotools/src/mpt/uuid
 mkdir -p bin/dist-autotools/src/openmpt
 svn export ./src/openmpt/all        bin/dist-autotools/src/openmpt/all
 svn export ./src/openmpt/base       bin/dist-autotools/src/openmpt/base
+svn export ./src/openmpt/fileformat_base bin/dist-autotools/src/openmpt/fileformat_base
 svn export ./src/openmpt/logging    bin/dist-autotools/src/openmpt/logging
 svn export ./src/openmpt/random     bin/dist-autotools/src/openmpt/random
 svn export ./src/openmpt/soundbase  bin/dist-autotools/src/openmpt/soundbase
+svn export ./src/openmpt/soundfile_data  bin/dist-autotools/src/openmpt/soundfile_data
+svn export ./src/openmpt/soundfile_write bin/dist-autotools/src/openmpt/soundfile_write
 svn export ./test            bin/dist-autotools/test
 rm bin/dist-autotools/test/mpt_tests_crypto.cpp
 rm bin/dist-autotools/test/mpt_tests_uuid_namespace.cpp
@@ -168,9 +179,12 @@ cp -r ./src/mpt/uuid           bin/dist-autotools/src/mpt/uuid
 mkdir -p bin/dist-autotools/src/openmpt
 cp -r ./src/openmpt/all        bin/dist-autotools/src/openmpt/all
 cp -r ./src/openmpt/base       bin/dist-autotools/src/openmpt/base
+cp -r ./src/openmpt/fileformat_base bin/dist-autotools/src/openmpt/fileformat_base
 cp -r ./src/openmpt/logging    bin/dist-autotools/src/openmpt/logging
 cp -r ./src/openmpt/random     bin/dist-autotools/src/openmpt/random
 cp -r ./src/openmpt/soundbase  bin/dist-autotools/src/openmpt/soundbase
+cp -r ./src/openmpt/soundfile_data  bin/dist-autotools/src/openmpt/soundfile_data
+cp -r ./src/openmpt/soundfile_write bin/dist-autotools/src/openmpt/soundfile_write
 cp -r ./test            bin/dist-autotools/test
 rm bin/dist-autotools/test/mpt_tests_crypto.cpp
 rm bin/dist-autotools/test/mpt_tests_uuid_namespace.cpp
@@ -276,11 +290,14 @@ mkdir -p libopenmpt/src.autotools/$MPT_LIBOPENMPT_VERSION/
 cp *.tar.gz libopenmpt/src.autotools/$MPT_LIBOPENMPT_VERSION/
 
 case $TAR_FLAVOUR in
+ mac)
+  tar -cv -f ../dist-autotools.tar libopenmpt
+  ;;
  bsd)
   tar -cv -N -f ../dist-autotools.tar libopenmpt
   ;;
  libarchive)
-  tar -cv --numeric-owner --uname	"" --gname "" --uid 0 --gid 0 -f ../dist-autotools.tar libopenmpt
+  tar -cv --numeric-owner --uname "" --gname "" --uid 0 --gid 0 -f ../dist-autotools.tar libopenmpt
   ;;
  gnu)
   tar -cv --numeric-owner --owner=0 --group=0 -f ../dist-autotools.tar libopenmpt

@@ -175,12 +175,12 @@
     <Filter Include="src\openmpt\random">
       <UniqueIdentifier>{AF3B4D62-9B1F-0EB8-0480-080BF082F839}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\openmpt\soundbase">
-      <UniqueIdentifier>{523C5D0D-BEA8-1808-879C-B065F3C73A70}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\common\BuildSettings.h">
+      <Filter>common</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\common\BuildSettingsCompiler.h">
       <Filter>common</Filter>
     </ClInclude>
     <ClInclude Include="..\..\common\ComponentManager.h">
@@ -324,6 +324,9 @@
     <ClInclude Include="..\..\src\mpt\base\constexpr_throw.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\mpt\base\debugging.hpp">
+      <Filter>src\mpt\base</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\detect.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
@@ -345,7 +348,7 @@
     <ClInclude Include="..\..\src\mpt\base\detect_quirks.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\mpt\base\floatingpoint.hpp">
+    <ClInclude Include="..\..\src\mpt\base\float.hpp">
       <Filter>src\mpt\base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\integer.hpp">
@@ -416,6 +419,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\tests\tests_base_wrapping_divide.hpp">
       <Filter>src\mpt\base\tests</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\mpt\base\type_traits.hpp">
+      <Filter>src\mpt\base</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\mpt\base\utility.hpp">
       <Filter>src\mpt\base</Filter>
@@ -723,6 +729,9 @@
     <ClInclude Include="..\..\src\mpt\path\path.hpp">
       <Filter>src\mpt\path</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\mpt\random\any_engine.hpp">
+      <Filter>src\mpt\random</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\mpt\random\crand.hpp">
       <Filter>src\mpt\random</Filter>
     </ClInclude>
@@ -798,6 +807,9 @@
     <ClInclude Include="..\..\src\openmpt\all\BuildSettings.hpp">
       <Filter>src\openmpt\all</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\openmpt\all\PlatformFixes.hpp">
+      <Filter>src\openmpt\all</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\openmpt\base\Endian.hpp">
       <Filter>src\openmpt\base</Filter>
     </ClInclude>
@@ -815,51 +827,6 @@
     </ClInclude>
     <ClInclude Include="..\..\src\openmpt\random\ModPlug.hpp">
       <Filter>src\openmpt\random</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\Copy.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\CopyMix.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\Dither.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\DitherModPlug.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\DitherNone.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\DitherSimple.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\MixSample.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\MixSampleConvert.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\SampleClip.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\SampleClipFixedPoint.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\SampleConvert.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\SampleConvertFixedPoint.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\SampleDecode.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\SampleEncode.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\openmpt\soundbase\SampleFormat.hpp">
-      <Filter>src\openmpt\soundbase</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

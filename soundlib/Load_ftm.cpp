@@ -15,8 +15,8 @@ OPENMPT_NAMESPACE_BEGIN
 
 struct FTMSampleHeader
 {
-	char  name[30];   // FTM cannot load samples with a filename longer than 29 samples
-	uint8 unknown;    // Probably padding. Usually contains null or space
+	char  name[30];   // FTM cannot load samples with a filename longer than 29 characters
+	uint8 unknown;    // Probably padding. Usually contains null or space (probably overflowing from name)
 	uint8 iffOctave;  // Only relevant in song mode
 };
 
@@ -124,15 +124,15 @@ bool CSoundFile::ReadFTM(FileReader &file, ModLoadingFlags loadFlags)
 	m_nMaxPeriod = 5376;
 	const bool moduleWithSamples = (fileHeader.flags & 0x01);
 	
-	m_modFormat.formatName = U_("Face The Music");
-	m_modFormat.type = U_("ftm");
-	m_modFormat.madeWithTracker = U_("Face The Music");
+	m_modFormat.formatName = UL_("Face The Music");
+	m_modFormat.type = UL_("ftm");
+	m_modFormat.madeWithTracker = UL_("Face The Music");
 	m_modFormat.charset = mpt::Charset::Amiga_no_C1;
 	
 	m_songName = mpt::String::ReadBuf(mpt::String::nullTerminated, fileHeader.title);
 	m_songArtist = mpt::ToUnicode(mpt::Charset::Amiga_no_C1, mpt::String::ReadBuf(mpt::String::nullTerminated, fileHeader.artist));
 
-	m_nSamples = m_nInstruments = fileHeader.numSamples;
+	m_nSamples = fileHeader.numSamples;
 	for(SAMPLEINDEX smp = 1; smp <= m_nSamples; smp++)
 	{
 		Samples[smp].Initialize(MOD_TYPE_MOD);
@@ -165,7 +165,7 @@ bool CSoundFile::ReadFTM(FileReader &file, ModLoadingFlags loadFlags)
 			}
 			if(!ok)
 			{
-				// Fall back to external sample mechanism. TODO: external sample loading ignores loop data on purpose, and does not support raw samples. How do we get it back?
+				// Fall back to external sample mechanism. TODO: external sample loading ignores loop data on purpose, and does not support raw samples or IFF octave selection. How do we get it back?
 				Samples[smp].uFlags.set(SMP_KEEPONDISK);
 				SetSamplePath(smp, filename);
 			}
@@ -383,9 +383,9 @@ bool CSoundFile::ReadFTM(FileReader &file, ModLoadingFlags loadFlags)
 				}
 
 				const auto position = std::div(globalRow + spacing, fileHeader.rowsPerMeasure);
-				PATTERNINDEX pat = static_cast<PATTERNINDEX>(position.quot);
-				if(pat >= Patterns.GetNumPatterns())
+				if(position.quot >= fileHeader.numMeasures)
 					break;
+				const PATTERNINDEX pat = static_cast<PATTERNINDEX>(position.quot);
 
 				ModCommand &m = *Patterns[pat].GetpModCommand(position.rem, chn);
 				const uint8 param = ((data[0] & 0x0F) << 2) | (data[1] >> 6);  // 0...63

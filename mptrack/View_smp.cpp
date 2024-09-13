@@ -414,37 +414,36 @@ void CViewSample::UpdateOPLEditor()
 {
 	if(!IsOPLInstrument())
 	{
-		if(m_oplEditor)
-			m_oplEditor->ShowWindow(SW_HIDE);
+		if(m_oplEditor && m_oplEditor->IsWindowVisible())
+		{
+			m_oplEditor->SetEnabled(false);
+			SetFocus();
+		}
 		return;
 	}
 	CSoundFile &sndFile = GetDocument()->GetSoundFile();
-	ModSample &sample = sndFile.GetSample(m_nSample);
-	if(sample.uFlags[CHN_ADLIB])
+	if(!m_oplEditor)
 	{
-		if(!m_oplEditor)
+		try
 		{
-			try
-			{
-				m_oplEditor = std::make_unique<OPLInstrDlg>(*this, sndFile);
-			} catch(mpt::out_of_memory e)
-			{
-				mpt::delete_out_of_memory(e);
-			}
-		}
-		if(m_oplEditor)
+			m_oplEditor = std::make_unique<OPLInstrDlg>(*this, sndFile);
+		} catch(mpt::out_of_memory e)
 		{
-			m_oplEditor->SetPatch(sample.adlib);
-			auto size = m_oplEditor->GetMinimumSize();
-			m_oplEditor->SetWindowPos(nullptr, -m_nScrollPosX, -m_nScrollPosY, std::max(size.cx, m_rcClient.right), std::max(size.cy, m_rcClient.bottom), SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+			mpt::delete_out_of_memory(e);
+			return;
 		}
 	}
+	m_oplEditor->SetPatch(sndFile.GetSample(m_nSample).adlib);
+	auto size = m_oplEditor->GetMinimumSize();
+	m_oplEditor->SetWindowPos(nullptr, -m_nScrollPosX, -m_nScrollPosY, std::max(size.cx, m_rcClient.right), std::max(size.cy, m_rcClient.bottom), SWP_NOZORDER | SWP_NOACTIVATE);
+	m_oplEditor->SetEnabled(true);
 }
 
 
+// cppcheck-suppress duplInheritedMember
 void CViewSample::OnSetFocus(CWnd *pOldWnd)
 {
-	CScrollView::OnSetFocus(pOldWnd);
+	CModScrollView::OnSetFocus(pOldWnd);
 	SetCurrentSample(m_nSample);
 }
 
@@ -758,15 +757,6 @@ LRESULT CViewSample::OnModViewMsg(WPARAM wParam, LPARAM lParam)
 
 	case VIEWMSG_PREPAREUNDO:
 		GetDocument()->GetSampleUndo().PrepareUndo(m_nSample, sundo_none, "Edit OPL Patch");
-		break;
-
-	case VIEWMSG_SETFOCUS:
-	case VIEWMSG_SETACTIVE:
-		GetParentFrame()->SetActiveView(this);
-		if(IsOPLInstrument() && m_oplEditor)
-			m_oplEditor->SetFocus();
-		else
-			SetFocus();
 		break;
 
 	default:

@@ -4,6 +4,7 @@
 
 
 #define BuildFolder "release\vs2022-win10-static"
+#define BuildFolderLegacyarm "release\vs2022-win8-static"
 #define BuildFolderLegacyx86 "release\vs2022-win7-static"
 #define BuildFolderLegacyamd64 "release\vs2022-win7-static"
 
@@ -26,7 +27,7 @@ AppPublisher=OpenMPT
 AppPublisherURL=https://openmpt.org/
 AppSupportURL=https://forum.openmpt.org/
 AppUpdatesURL=https://openmpt.org/
-ArchitecturesInstallIn64BitMode=x64 arm64 ia64
+ArchitecturesInstallIn64BitMode=x64os arm64
 ChangesAssociations=yes
 Compression=lzma2/ultra64
 ;DefaultDirName={autopf}\OpenMPT
@@ -110,12 +111,12 @@ Source: ..\bin\{#BuildFolderLegacyamd64}\amd64\openmpt-lame.dll; DestDir: {app}\
 Source: ..\bin\{#BuildFolderLegacyamd64}\amd64\openmpt-mpg123.dll; DestDir: {app}\bin\amd64; Flags: ignoreversion; Components: archamd64; OnlyBelowVersion: 10.0.19044
 Source: ..\bin\{#BuildFolderLegacyamd64}\amd64\openmpt-soundtouch.dll; DestDir: {app}\bin\amd64; Flags: ignoreversion; Components: archamd64; OnlyBelowVersion: 10.0.19044
 
-Source: ..\bin\{#BuildFolder}\arm\OpenMPT.exe; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 10.0.19044
-Source: ..\bin\{#BuildFolder}\arm\PluginBridge-arm.exe; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 10.0.19044
-Source: ..\bin\{#BuildFolder}\arm\PluginBridgeLegacy-arm.exe; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 10.0.19044
-Source: ..\bin\{#BuildFolder}\arm\openmpt-lame.dll; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 10.0.19044
-Source: ..\bin\{#BuildFolder}\arm\openmpt-mpg123.dll; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 10.0.19044
-Source: ..\bin\{#BuildFolder}\arm\openmpt-soundtouch.dll; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 10.0.19044
+Source: ..\bin\{#BuildFolderLegacyarm}\arm\OpenMPT.exe; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 6.2
+Source: ..\bin\{#BuildFolderLegacyarm}\arm\PluginBridge-arm.exe; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 6.2
+Source: ..\bin\{#BuildFolderLegacyarm}\arm\PluginBridgeLegacy-arm.exe; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 6.2
+Source: ..\bin\{#BuildFolderLegacyarm}\arm\openmpt-lame.dll; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 6.2
+Source: ..\bin\{#BuildFolderLegacyarm}\arm\openmpt-mpg123.dll; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 6.2
+Source: ..\bin\{#BuildFolderLegacyarm}\arm\openmpt-soundtouch.dll; DestDir: {app}\bin\arm; Flags: ignoreversion; Components: archarm; MinVersion: 6.2
 
 Source: ..\bin\{#BuildFolder}\arm64\OpenMPT.exe; DestDir: {app}\bin\arm64; Flags: ignoreversion; Components: archarm64; MinVersion: 10.0.19044
 Source: ..\bin\{#BuildFolder}\arm64\PluginBridge-arm64.exe; DestDir: {app}\bin\arm64; Flags: ignoreversion; Components: archarm64; MinVersion: 10.0.19044
@@ -244,10 +245,6 @@ begin
 			begin
 				WizardSelectComponents('archx86,archamd64,!archarm,!archarm64');
 			end;
-		paIA64:
-			begin
-				WizardSelectComponents('archx86,!archamd64,!archarm,!archarm64');
-			end;
 		paARM64:
 			begin
 				WizardSelectComponents('archx86,archamd64,archarm,archarm64');
@@ -270,10 +267,6 @@ begin
 		paX64:
 			begin
 				Result := 'amd64';
-			end;
-		paIA64:
-			begin
-				Result := 'x86';
 			end;
 		paARM64:
 			begin

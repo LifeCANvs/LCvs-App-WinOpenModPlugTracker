@@ -1,8 +1,9 @@
 /*
- * globals.cpp
+ * Globals.cpp
  * -----------
- * Purpose: Implementation of various views of the tracker interface.
- * Notes  : (currently none)
+ * Purpose: Implementation of the base classes for the upper and lower half of the MDI child windows.
+ * Notes  : CModControlDlg = Upper half (Ctrl_*.cpp/h), which is contained inside a CModControlView together with the tab switcher (CModTabCtrl).
+ *          CModScrollView = Lower half (View_*.cpp/h).
  * Authors: OpenMPT Devs
  * The OpenMPT source code is released under the BSD license. Read LICENSE for more details.
  */
@@ -27,6 +28,17 @@
 OPENMPT_NAMESPACE_BEGIN
 
 
+static void RestoreLastFocusItem(HWND parent, HWND &lastFocusItem)
+{
+	if(lastFocusItem && IsChild(parent, lastFocusItem) && IsWindowEnabled(lastFocusItem))
+		SetFocus(lastFocusItem);
+	else if(HWND firstWnd = GetNextDlgTabItem(parent, nullptr, FALSE))
+		SetFocus(lastFocusItem = firstWnd);
+	else
+		SetFocus(parent);
+}
+
+
 /////////////////////////////////////////////////////////////////////////////
 // CModControlDlg
 
@@ -36,7 +48,7 @@ BEGIN_MESSAGE_MAP(CModControlDlg, CDialog)
 #if !defined(MPT_BUILD_RETRO)
 	ON_MESSAGE(WM_DPICHANGED, &CModControlDlg::OnDPIChanged)
 #endif
-	ON_MESSAGE(WM_MOD_UNLOCKCONTROLS,		&CModControlDlg::OnUnlockControls)
+	ON_MESSAGE(WM_MOD_UNLOCKCONTROLS,            &CModControlDlg::OnUnlockControls)
 	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXTW, 0, 0xFFFF, &CModControlDlg::OnToolTipText)
 	ON_NOTIFY_EX_RANGE(TTN_NEEDTEXTA, 0, 0xFFFF, &CModControlDlg::OnToolTipText)
 	//}}AFX_MSG_MAP
@@ -82,12 +94,26 @@ void CModControlDlg::OnSize(UINT nType, int cx, int cy)
 }
 
 
+void CModControlDlg::SaveLastFocusItem(HWND hwnd)
+{
+	MPT_ASSERT(::IsChild(m_hWnd, hwnd));
+	if(hwnd)
+		m_lastFocusItem = hwnd;
+}
+
+
+void CModControlDlg::RestoreLastFocusItem()
+{
+	OPENMPT_NAMESPACE::RestoreLastFocusItem(*this, m_lastFocusItem);
+}
+
+
 LRESULT CModControlDlg::OnModCtrlMsg(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam)
 	{
 	case CTRLMSG_SETVIEWWND:
-		m_hWndView = (HWND)lParam;
+		m_hWndView = reinterpret_cast<HWND>(lParam);
 		break;
 
 	case CTRLMSG_ACTIVATEPAGE:
@@ -100,7 +126,7 @@ LRESULT CModControlDlg::OnModCtrlMsg(WPARAM wParam, LPARAM lParam)
 
 	case CTRLMSG_SETFOCUS:
 		GetParentFrame()->SetActiveView(&m_parent);
-		SetFocus();
+		RestoreLastFocusItem();
 		break;
 	}
 	return 0;
@@ -109,19 +135,21 @@ LRESULT CModControlDlg::OnModCtrlMsg(WPARAM wParam, LPARAM lParam)
 
 LRESULT CModControlDlg::SendViewMessage(UINT uMsg, LPARAM lParam) const
 {
-	if (m_hWndView)	return ::SendMessage(m_hWndView, WM_MOD_VIEWMSG, uMsg, lParam);
+	if(m_hWndView)
+		return ::SendMessage(m_hWndView, WM_MOD_VIEWMSG, uMsg, lParam);
 	return 0;
 }
 
 
 BOOL CModControlDlg::PostViewMessage(UINT uMsg, LPARAM lParam) const
 {
-	if (m_hWndView)	return ::PostMessage(m_hWndView, WM_MOD_VIEWMSG, uMsg, lParam);
+	if(m_hWndView)
+		return ::PostMessage(m_hWndView, WM_MOD_VIEWMSG, uMsg, lParam);
 	return FALSE;
 }
 
 
-INT_PTR CModControlDlg::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
+INT_PTR CModControlDlg::OnToolHitTest(CPoint point, TOOLINFO *pTI) const
 {
 	INT_PTR nHit = CDialog::OnToolHitTest(point, pTI);
 	if ((nHit >= 0) && (pTI))
@@ -136,11 +164,13 @@ INT_PTR CModControlDlg::OnToolHitTest(CPoint point, TOOLINFO* pTI) const
 }
 
 
-BOOL CModControlDlg::OnToolTipText(UINT nID, NMHDR* pNMHDR, LRESULT* pResult)
+BOOL CModControlDlg::OnToolTipText(UINT nID, NMHDR *pNMHDR, LRESULT *pResult)
 {
 	CChildFrame *pChildFrm = (CChildFrame *)GetParentFrame();
-	if (pChildFrm) return pChildFrm->OnToolTipText(nID, pNMHDR, pResult);
-	if (pResult) *pResult = 0;
+	if(pChildFrm)
+		return pChildFrm->OnToolTipText(nID, pNMHDR, pResult);
+	if(pResult)
+		*pResult = 0;
 	return FALSE;
 }
 
@@ -189,17 +219,18 @@ BEGIN_MESSAGE_MAP(CModControlView, CView)
 	//{{AFX_MSG_MAP(CModControlView)
 	ON_WM_SIZE()
 	ON_WM_DESTROY()
-	ON_NOTIFY(TCN_SELCHANGE, IDC_TABCTRL1,	&CModControlView::OnTabSelchange)
-	ON_MESSAGE(WM_MOD_ACTIVATEVIEW,			&CModControlView::OnActivateModView)
-	ON_MESSAGE(WM_MOD_CTRLMSG,				&CModControlView::OnModCtrlMsg)
-	ON_MESSAGE(WM_MOD_GETTOOLTIPTEXT,		&CModControlView::OnGetToolTipText)
-	ON_COMMAND(ID_EDIT_CUT,					&CModControlView::OnEditCut)
-	ON_COMMAND(ID_EDIT_COPY,				&CModControlView::OnEditCopy)
-	ON_COMMAND(ID_EDIT_PASTE,				&CModControlView::OnEditPaste)
-	ON_COMMAND(ID_EDIT_MIXPASTE,			&CModControlView::OnEditMixPaste)
-	ON_COMMAND(ID_EDIT_MIXPASTE_ITSTYLE,	&CModControlView::OnEditMixPasteITStyle)
-	ON_COMMAND(ID_EDIT_FIND,				&CModControlView::OnEditFind)
-	ON_COMMAND(ID_EDIT_FINDNEXT,			&CModControlView::OnEditFindNext)
+	ON_WM_SETFOCUS()
+	ON_NOTIFY(TCN_SELCHANGE, IDC_TABCTRL1, &CModControlView::OnTabSelchange)
+	ON_MESSAGE(WM_MOD_ACTIVATEVIEW,        &CModControlView::OnActivateModView)
+	ON_MESSAGE(WM_MOD_CTRLMSG,             &CModControlView::OnModCtrlMsg)
+	ON_MESSAGE(WM_MOD_GETTOOLTIPTEXT,      &CModControlView::OnGetToolTipText)
+	ON_COMMAND(ID_EDIT_CUT,                &CModControlView::OnEditCut)
+	ON_COMMAND(ID_EDIT_COPY,               &CModControlView::OnEditCopy)
+	ON_COMMAND(ID_EDIT_PASTE,              &CModControlView::OnEditPaste)
+	ON_COMMAND(ID_EDIT_MIXPASTE,           &CModControlView::OnEditMixPaste)
+	ON_COMMAND(ID_EDIT_MIXPASTE_ITSTYLE,   &CModControlView::OnEditMixPasteITStyle)
+	ON_COMMAND(ID_EDIT_FIND,               &CModControlView::OnEditFind)
+	ON_COMMAND(ID_EDIT_FINDNEXT,           &CModControlView::OnEditFindNext)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -216,6 +247,14 @@ void CModControlView::OnInitialUpdate() // called first time after construct
 	m_TabCtrl.Create(WS_CHILD|WS_VISIBLE|TCS_FOCUSNEVER|TCS_FORCELABELLEFT, rect, this, IDC_TABCTRL1);
 	UpdateView(UpdateHint().ModType());
 	SetActivePage(Page::First);
+}
+
+
+void CModControlView::OnSetFocus(CWnd *pOldWnd)
+{
+	if(CModControlDlg *activeDlg = GetCurrentControlDlg())
+		activeDlg->RestoreLastFocusItem();
+	CView::OnSetFocus(pOldWnd);
 }
 
 
@@ -326,6 +365,7 @@ bool CModControlView::SetActivePage(Page page, LPARAM lParam)
 	{
 		m_nActiveDlg = page;
 		pDlg = m_Pages[static_cast<size_t>(page)];
+		pDlg->ForgetLastFocusItem();
 	} else // Ctrl window is not created yet - creating one.
 	{
 		m_nActiveDlg = Page::Unknown;
@@ -366,7 +406,8 @@ bool CModControlView::SetActivePage(Page page, LPARAM lParam)
 	pMainFrm->SetXInfoText(_T(""));
 	pDlg->ShowWindow(SW_SHOW);
 	static_cast<CChildFrame *>(GetParentFrame())->SetSplitterHeight(pDlg->GetSplitPosRef());
-	if (m_hWndMDI) ::PostMessage(m_hWndMDI, WM_MOD_CHANGEVIEWCLASS, (WPARAM)lParam, (LPARAM)pDlg);
+	if(m_hWndMDI)
+		::PostMessage(m_hWndMDI, WM_MOD_CHANGEVIEWCLASS, (WPARAM)lParam, (LPARAM)pDlg);
 	return true;
 }
 
@@ -535,12 +576,13 @@ BEGIN_MESSAGE_MAP(CModScrollView, CScrollView)
 	ON_WM_DESTROY()
 	ON_WM_MOUSEWHEEL()
 	ON_WM_MOUSEHWHEEL()
+	ON_WM_SETFOCUS()
 #if !defined(MPT_BUILD_RETRO)
 	ON_MESSAGE(WM_DPICHANGED, &CModScrollView::OnDPIChanged)
 #endif
-	ON_MESSAGE(WM_MOD_VIEWMSG,			&CModScrollView::OnReceiveModViewMsg)
-	ON_MESSAGE(WM_MOD_DRAGONDROPPING,	&CModScrollView::OnDragonDropping)
-	ON_MESSAGE(WM_MOD_UPDATEPOSITION,	&CModScrollView::OnUpdatePosition)
+	ON_MESSAGE(WM_MOD_VIEWMSG,        &CModScrollView::OnReceiveModViewMsg)
+	ON_MESSAGE(WM_MOD_DRAGONDROPPING, &CModScrollView::OnDragonDropping)
+	ON_MESSAGE(WM_MOD_UPDATEPOSITION, &CModScrollView::OnUpdatePosition)
 	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
@@ -572,7 +614,22 @@ LRESULT CModScrollView::OnReceiveModViewMsg(WPARAM wParam, LPARAM lParam)
 }
 
 
-void CModScrollView::OnUpdate(CView* pView, LPARAM lHint, CObject*pHint)
+void CModScrollView::SaveLastFocusItem(HWND hwnd)
+{
+	MPT_ASSERT(::IsChild(m_hWnd, hwnd));
+	if(hwnd)
+		m_lastFocusItem = hwnd;
+}
+
+
+void CModScrollView::OnSetFocus(CWnd *pOldWnd)
+{
+	RestoreLastFocusItem(*this, m_lastFocusItem);
+	CScrollView::OnSetFocus(pOldWnd);
+}
+
+
+void CModScrollView::OnUpdate(CView *pView, LPARAM lHint, CObject *pHint)
 {
 	if (pView != this) UpdateView(UpdateHint::FromLPARAM(lHint), pHint);
 }
@@ -589,7 +646,7 @@ LRESULT CModScrollView::OnModViewMsg(WPARAM wParam, LPARAM lParam)
 	case VIEWMSG_SETFOCUS:
 	case VIEWMSG_SETACTIVE:
 		GetParentFrame()->SetActiveView(this);
-		SetFocus();
+		RestoreLastFocusItem(*this, m_lastFocusItem);
 		break;
 	}
 	return 0;

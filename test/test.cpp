@@ -36,6 +36,7 @@
 #include "mpt/osinfo/dos_memory.hpp"
 #include "mpt/parse/parse.hpp"
 #include "mpt/parse/split.hpp"
+#include "mpt/random/seed.hpp"
 #include "mpt/test/test.hpp"
 #include "mpt/test/test_macros.hpp"
 #include "mpt/uuid/uuid.hpp"
@@ -3129,7 +3130,7 @@ static void TestLoadMPTMFile(const CSoundFile &sndFile)
 
 		for(size_t i = 0; i < NOTE_MAX; i++)
 		{
-			VERIFY_EQUAL_NONCONT(pIns->Keyboard[i], (i == NOTE_MIDDLEC - 1) ? 99 : 1);
+			VERIFY_EQUAL_NONCONT(pIns->Keyboard[i], (i == NOTE_MIDDLEC - 1) ? (ins * 1111) : 1);
 			VERIFY_EQUAL_NONCONT(pIns->NoteMap[i], (i == NOTE_MIDDLEC - 1) ? (i + 13) : (i + 1));
 		}
 
@@ -3857,9 +3858,7 @@ static MPT_NOINLINE void TestEditing()
 #ifdef MODPLUG_TRACKER
 	auto modDoc = static_cast<CModDoc *>(theApp.GetModDocTemplate()->CreateNewDocument());
 	auto &sndFile = modDoc->GetSoundFile();
-	sndFile.Create(FileReader(), CSoundFile::loadCompleteModule, modDoc);
-	sndFile.ChnSettings.resize(4);
-	sndFile.ChangeModTypeTo(MOD_TYPE_MPT);
+	sndFile.Create(MOD_TYPE_MPT, 4, modDoc);
 
 	// Rearrange channels
 	sndFile.Patterns.ResizeArray(2);
@@ -4055,11 +4054,9 @@ static void GenerateCommands(CPattern& pat, const double dProbPcs, const double 
 static MPT_NOINLINE void TestPCnoteSerialization()
 {
 	FileReader file;
-	std::unique_ptr<CSoundFile> pSndFile = std::make_unique<CSoundFile>();
-	CSoundFile &sndFile = *pSndFile.get();
-	sndFile.m_nType = MOD_TYPE_MPT;
-	sndFile.Patterns.DestroyPatterns();
-	sndFile.ChnSettings.resize(ModSpecs::mptm.channelsMax);
+	mpt::heap_value<CSoundFile> pSndFile;
+	CSoundFile &sndFile = *pSndFile;
+	sndFile.Create(MOD_TYPE_MPT, ModSpecs::mptm.channelsMax);
 
 	sndFile.Patterns.Insert(0, ModSpecs::mptm.patternRowsMin);
 	sndFile.Patterns.Insert(1, 64);
@@ -4622,8 +4619,8 @@ static MPT_NOINLINE void TestSampleConversion()
 		sample.nLength = 65536;
 		sample.uFlags.set(CHN_16BIT);
 		sample.pData.pSample = sampleBuf.data();
-		CopyAndNormalizeSample<SC::NormalizationChain<SC::Convert<int16, float32>, SC::DecodeFloat32<bigEndian32> > >(sample, source32.data(), 4*65536);
-		CopySample<SC::ConversionChain<SC::Convert<int16, float32>, SC::DecodeFloat32<bigEndian32> > >(truncated16.data(), 65536, 1, source32.data(), 65536 * 4, 1);
+		CopyAndNormalizeSample<SC::NormalizationChain<SC::Convert<int16, somefloat32>, SC::DecodeFloat32<bigEndian32> > >(sample, source32.data(), 4*65536);
+		CopySample<SC::ConversionChain<SC::Convert<int16, somefloat32>, SC::DecodeFloat32<bigEndian32> > >(truncated16.data(), 65536, 1, source32.data(), 65536 * 4, 1);
 
 		for(std::size_t i = 0; i < 65536; i++)
 		{

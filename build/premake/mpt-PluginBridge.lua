@@ -23,10 +23,18 @@
    "../../common/versionNumber.h",
   }
 	excludes {
+		"../../src/openmpt/fileformat_base/**.cpp",
+		"../../src/openmpt/fileformat_base/**.hpp",
 		"../../src/openmpt/soundbase/**.cpp",
 		"../../src/openmpt/soundbase/**.hpp",
+		"../../src/openmpt/soundfile_data/**.cpp",
+		"../../src/openmpt/soundfile_data/**.hpp",
+		"../../src/openmpt/soundfile_write/**.cpp",
+		"../../src/openmpt/soundfile_write/**.hpp",
 		"../../src/openmpt/sounddevice/**.cpp",
 		"../../src/openmpt/sounddevice/**.hpp",
+		"../../src/openmpt/streamencoder/**.cpp",
+		"../../src/openmpt/streamencoder/**.hpp",
 	}
   files {
    "../../pluginBridge/PluginBridge.rc",
@@ -75,10 +83,18 @@
    "../../common/versionNumber.h",
   }
 	excludes {
+		"../../src/openmpt/fileformat_base/**.cpp",
+		"../../src/openmpt/fileformat_base/**.hpp",
 		"../../src/openmpt/soundbase/**.cpp",
 		"../../src/openmpt/soundbase/**.hpp",
+		"../../src/openmpt/soundfile_data/**.cpp",
+		"../../src/openmpt/soundfile_data/**.hpp",
+		"../../src/openmpt/soundfile_write/**.cpp",
+		"../../src/openmpt/soundfile_write/**.hpp",
 		"../../src/openmpt/sounddevice/**.cpp",
 		"../../src/openmpt/sounddevice/**.hpp",
+		"../../src/openmpt/streamencoder/**.cpp",
+		"../../src/openmpt/streamencoder/**.hpp",
 	}
   files {
    "../../pluginBridge/PluginBridge.rc",

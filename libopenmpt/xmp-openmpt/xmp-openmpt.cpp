@@ -756,7 +756,7 @@ static char * build_xmplay_tags( const openmpt::module & mod, int32_t subsong = 
 
 	for ( auto subsong_name = first_subsong; subsong_name != last_subsong; subsong_name++ ) {
 		append_xmplay_tag( tags, "filetype", convert_to_native( StringUpperCase( mod.get_metadata( "type" ) ) ) );
-		append_xmplay_tag( tags, "title", convert_to_native( ( subsong_name->empty() || subsong == -1 ) ? title : *subsong_name ) );
+		append_xmplay_tag( tags, "title", convert_to_native( ( subsong_name->empty() || subsong == -1 || subsong_names.size() == 1 ) ? title : *subsong_name ) );
 		append_xmplay_tag( tags, "artist", convert_to_native( mod.get_metadata( "artist" ) ) );
 		append_xmplay_tag( tags, "album", convert_to_native( mod.get_metadata( "xmplay-album" ) ) );  // todo, libopenmpt does not support that
 		append_xmplay_tag( tags, "date", convert_to_native( extract_date( mod ) ) );
@@ -1261,7 +1261,7 @@ static void add_names( std::ostream & str, const std::string & title, const std:
 		}
 		str << title << " Names:" << "\r";
 		for ( std::size_t i = 0; i < names.size(); i++ ) {
-			str << std::setfill('0') << std::setw(2) << (display_offset + i) << std::setw(0) << "\t" << convert_to_native( names[i] ) << "\r";
+			str << std::setfill( '0' ) << std::setw( 2 ) << ( display_offset + i ) << std::setw( 0 ) << "\t" << convert_to_native( sanitize_xmplay_info_string( names[i] ) ) << "\r";
 		}
 		str << "\r";
 	}

@@ -1589,6 +1589,11 @@ void CSoundFile::ProcessArpeggio(CHANNELINDEX nChn, int32 &period, Tuning::NOTEI
 				uint8 note = (GetType() != MOD_TYPE_MOD) ? chn.nNote : static_cast<uint8>(GetNoteFromPeriod(period, chn.nFineTune, chn.nC5Speed));
 				if(GetType() & (MOD_TYPE_DBM | MOD_TYPE_DIGI))
 					tick += 2;
+
+				// SFX uses a 0-1-2-0-2-1 pattern (fixed at 6 ticks per row)
+				if(GetType() == MOD_TYPE_SFX && tick > 3)
+					tick ^= 3;
+
 				switch(tick % 3)
 				{
 				case 1: note += (chn.nArpeggio >> 4); break;
@@ -1611,7 +1616,7 @@ void CSoundFile::ProcessArpeggio(CHANNELINDEX nChn, int32 &period, Tuning::NOTEI
 					}
 					period = GetPeriodFromNote(note, chn.nFineTune, chn.nC5Speed);
 
-					if(GetType() & (MOD_TYPE_DBM | MOD_TYPE_DIGI | MOD_TYPE_PSM | MOD_TYPE_STM | MOD_TYPE_OKT))
+					if(GetType() & (MOD_TYPE_DBM | MOD_TYPE_DIGI | MOD_TYPE_PSM | MOD_TYPE_STM | MOD_TYPE_OKT | MOD_TYPE_SFX))
 					{
 						// The arpeggio note offset remains effective after the end of the current row in ScreamTracker 2.
 						// This fixes the flute lead in MORPH.STM by Skaven, pattern 27.
@@ -1641,7 +1646,7 @@ void CSoundFile::ProcessVibrato(CHANNELINDEX nChn, int32 &period, Tuning::RATIOT
 
 	if(chn.dwFlags[CHN_VIBRATO])
 	{
-		const bool advancePosition = !m_PlayState.m_flags[SONG_FIRSTTICK] || ((GetType() & (MOD_TYPE_IT | MOD_TYPE_MPT)) && !(m_SongFlags[SONG_ITOLDEFFECTS]));
+		const bool advancePosition = !m_PlayState.m_flags[SONG_FIRSTTICK] || ((GetType() & (MOD_TYPE_IT | MOD_TYPE_MPT | MOD_TYPE_MED)) && !(m_SongFlags[SONG_ITOLDEFFECTS]));
 
 		if(GetType() == MOD_TYPE_669)
 		{
@@ -2479,15 +2484,10 @@ bool CSoundFile::ReadNote()
 			{
 				int32 pan = (m_MixerSettings.gnChannels >= 2) ? Clamp(chn.nRealPan, 0, 256) : 128;
 
-				int32 realvol;
-				if(m_PlayConfig.getUseGlobalPreAmp())
-				{
-					realvol = (chn.nRealVolume * kChnMasterVol) / 128;
-				} else
-				{
-					// Extra attenuation required here if we're bypassing pre-amp.
-					realvol = (chn.nRealVolume * kChnMasterVol) / 256;
-				}
+				int32 realvol = (chn.nRealVolume * kChnMasterVol) / 128;
+				// Extra attenuation required here if we're bypassing pre-amp.
+				if(!m_PlayConfig.getUseGlobalPreAmp())
+					realvol /= 2;
 
 				const PanningMode panningMode = m_PlayConfig.getPanningMode();
 				if(panningMode == PanningMode::SoftPanning || (panningMode == PanningMode::Undetermined && (m_MixerSettings.MixerFlags & SNDMIX_SOFTPANNING)))
@@ -2508,10 +2508,19 @@ bool CSoundFile::ReadNote()
 					// you can never truly achieve 100% right panning in FT2, only 100% left.
 					// Test case: FT2PanLaw.xm
 					LimitMax(pan, 255);
-					const int panL = pan > 0 ? XMPanningTable[256 - pan] : 65536;
-					const int panR = XMPanningTable[pan];
-					chn.newLeftVol = (realvol * panL) / 65536;
-					chn.newRightVol = (realvol * panR) / 65536;
+
+					// PolyTracker also uses square root panning, but there's a bug where the leftmost and rightmost pan positions play the sample centered, without any attenuation.
+					if(GetType() == MOD_TYPE_PTM && (pan == 0 || pan == 255))
+					{
+						chn.newLeftVol = realvol;
+						chn.newRightVol = realvol;
+					} else
+					{
+						const int panL = pan > 0 ? XMPanningTable[256 - pan] : 65536;
+						const int panR = XMPanningTable[pan];
+						chn.newLeftVol = (realvol * panL) / 65536;
+						chn.newRightVol = (realvol * panR) / 65536;
+					}
 				} else
 				{
 					chn.newLeftVol = (realvol * (256 - pan)) / 256;
@@ -2643,11 +2652,11 @@ void CSoundFile::ProcessMidiOut(CHANNELINDEX nChn)
 	// Check for volume commands
 	uint8 vol = 0xFF;
 	if(chn.rowCommand.volcmd == VOLCMD_VOLUME)
-		vol = std::min(chn.rowCommand.vol, uint8(64));
+		vol = std::min(chn.rowCommand.vol, uint8(64)) * 2u;
 	else if(chn.rowCommand.command == CMD_VOLUME)
-		vol = std::min(chn.rowCommand.param, uint8(64));
+		vol = std::min(chn.rowCommand.param, uint8(64)) * 2u;
 	else if(chn.rowCommand.command == CMD_VOLUME8)
-		vol = static_cast<uint8>((chn.rowCommand.param + 3u) / 4u);
+		vol = static_cast<uint8>((chn.rowCommand.param + 1u) / 2u);
 
 	const bool hasVolCommand = (vol != 0xFF);
 
@@ -2658,10 +2667,10 @@ void CSoundFile::ProcessMidiOut(CHANNELINDEX nChn)
 			ModCommand::NOTE realNote = note;
 			if(ModCommand::IsNote(note))
 				realNote = pIns->NoteMap[note - NOTE_MIN];
-			SendMIDINote(nChn, realNote, static_cast<uint16>(chn.nVolume));
+			SendMIDINote(nChn, realNote, static_cast<uint16>(chn.nVolume), m_playBehaviour[kMIDINotesFromChannelPlugin] ? pPlugin : nullptr);
 		} else if(hasVolCommand)
 		{
-			pPlugin->MidiCC(MIDIEvents::MIDICC_Volume_Fine, vol, nChn);
+			pPlugin->MidiCC(MIDIEvents::MIDICC_Volume_Fine, vol / 2u, nChn);
 		}
 		return;
 	}
@@ -2675,7 +2684,7 @@ void CSoundFile::ProcessMidiOut(CHANNELINDEX nChn)
 		switch(pIns->pluginVelocityHandling)
 		{
 			case PLUGIN_VELOCITYHANDLING_CHANNEL:
-				velocity = chn.nVolume;
+				velocity = hasVolCommand ? vol * 2 : chn.nVolume;
 				break;
 			default:
 				break;
@@ -2692,7 +2701,7 @@ void CSoundFile::ProcessMidiOut(CHANNELINDEX nChn)
 		// Experimental VST panning
 		//ProcessMIDIMacro(nChn, false, m_MidiCfg.Global[MIDIOUT_PAN], 0, nPlugin);
 		if(m_playBehaviour[kPluginIgnoreTonePortamento] || !chn.rowCommand.IsTonePortamento())
-			SendMIDINote(nChn, realNote, static_cast<uint16>(velocity));
+			SendMIDINote(nChn, realNote, static_cast<uint16>(velocity), m_playBehaviour[kMIDINotesFromChannelPlugin] ? pPlugin : nullptr);
 	}
 
 	const bool processVolumeAlsoOnNote = (pIns->pluginVelocityHandling == PLUGIN_VELOCITYHANDLING_VOLUME);
@@ -2703,11 +2712,11 @@ void CSoundFile::ProcessMidiOut(CHANNELINDEX nChn)
 		switch(pIns->pluginVolumeHandling)
 		{
 			case PLUGIN_VOLUMEHANDLING_DRYWET:
-				if(hasVolCommand) pPlugin->SetDryRatio(1.0f - (2 * vol) / 127.0f);
+				if(hasVolCommand) pPlugin->SetDryRatio(1.0f - vol / 127.0f);
 				else pPlugin->SetDryRatio(1.0f - static_cast<float>(2 * defaultVolume) / 127.0f);
 				break;
 			case PLUGIN_VOLUMEHANDLING_MIDI:
-				if(hasVolCommand) pPlugin->MidiCC(MIDIEvents::MIDICC_Volume_Coarse, std::min(uint8(127), static_cast<uint8>(2 * vol)), nChn);
+				if(hasVolCommand) pPlugin->MidiCC(MIDIEvents::MIDICC_Volume_Coarse, std::min(uint8(127), vol), nChn);
 				else pPlugin->MidiCC(MIDIEvents::MIDICC_Volume_Coarse, static_cast<uint8>(std::min(uint32(127), static_cast<uint32>(2 * defaultVolume))), nChn);
 				break;
 			default:

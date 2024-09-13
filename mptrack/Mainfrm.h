@@ -144,7 +144,7 @@ public:
 
 	// Globals
 	static OptionsPage m_nLastOptionsPage;
-	static HHOOK ghKbdHook;
+	static HHOOK ghKbdHook, g_focusHook;
 
 	// GDI
 	static HICON m_hIcon;
@@ -264,6 +264,7 @@ public:
 	static HFONT &GetCommentsFont() { return m_hFixedFont; }
 	static void UpdateAllViews(UpdateHint hint, CObject *pHint=NULL);
 	static LRESULT CALLBACK KeyboardProc(int code, WPARAM wParam, LPARAM lParam);
+	static LRESULT CALLBACK FocusChangeProc(int code, WPARAM wParam, LPARAM lParam);
 	static CInputHandler *m_InputHandler;
 
 	// Misc functions
@@ -281,7 +282,7 @@ public:
 	void UpdateTree(CModDoc *pModDoc, UpdateHint hint, CObject *pHint = nullptr);
 	void RefreshDlsBanks();
 	static CInputHandler* GetInputHandler() { return m_InputHandler; }
-	void SetElapsedTime(double t) { m_dwTimeSec = static_cast<samplecount_t>(t); }
+	void SetElapsedTime(double t) { m_dwTimeSec = mpt::saturate_cast<samplecount_t>(t * 10.0); }
 
 #if defined(MPT_ENABLE_UPDATE)
 	bool ShowUpdateIndicator(const UpdateCheckResult &result, const CString &releaseVersion, const CString &infoURL, bool showHighlight);
